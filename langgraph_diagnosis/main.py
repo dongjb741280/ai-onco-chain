@@ -1,19 +1,25 @@
-"""CLI 入口：跑一例（含人机协同暂停/恢复），或输出结构化 JSON。
+"""CLI 入口：跑一例输出格式化诊断报告（默认），或结构化 JSON。
 
 用法：
-  python main.py REAL-006                     # 跑一例，遇红线/报告终审时暂停
-  python main.py REAL-006 --json              # 一次性输出（自动 approve，跳过人工）
+  python main.py REAL-006                     # 输出格式化 markdown 诊断（默认自动通过红线/终审，不卡交互）
+  python main.py REAL-006 --json              # 结构化 JSON 输出（供评测/流水线）
+  python main.py REAL-006 --interactive       # 遇红线/终审时人工决策
   python main.py REAL-006 --thread t1         # 指定 thread_id，便于 resume
+  python main.py REAL-006 -o reports/REAL-006.md   # 报告写 .md，并一并生成决策链 .mmd/.svg/.png（默认打印到 stdout）
 """
 from __future__ import annotations
 
 import argparse
 import json
+import shutil
+import subprocess
+from pathlib import Path
 
 from langgraph.types import Command
 
 import config
 from graph import get_graph
+from render import render_decision_chain_mmd, render_diagnosis
 
 
 def run(case: str, thread_id: str, auto_approve: bool = False) -> dict:
@@ -62,31 +68,50 @@ def _dump(result: dict) -> str:
     return json.dumps(out, ensure_ascii=False, indent=2)
 
 
+def _write_diagram(result: dict, case: str, out: Path) -> None:
+    """把决策链 mermaid 写到报告同目录，并尝试 mmdc 渲染 svg/png（可选）。"""
+    mmd = render_decision_chain_mmd(result)
+    slug = Path(case).stem or "case"
+    mmd_path = out.parent / f"decision-chain-{slug}.mmd"
+    mmd_path.write_text(mmd + "\n", encoding="utf-8")
+    print(f"已写入 {mmd_path}")
+
+    if shutil.which("mmdc"):
+        for ext, extra in ((".svg", ["-b", "white"]), (".png", ["-b", "white", "-s", "2"])):
+            target = out.parent / f"decision-chain-{slug}{ext}"
+            subprocess.run(
+                ["mmdc", "-i", str(mmd_path), "-o", str(target), *extra],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            if target.exists():
+                print(f"已渲染 {target}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("case", help="REAL-XXX 编号或 JSON 路径")
-    ap.add_argument("--json", action="store_true", help="结构化 JSON 输出（自动 approve）")
+    ap.add_argument("--json", action="store_true", help="结构化 JSON 输出（供评测/流水线）")
+    ap.add_argument("--interactive", action="store_true", help="遇红线/终审时人工决策（默认自动通过）")
     ap.add_argument("--thread", default=None, help="thread_id（用于 resume）")
+    ap.add_argument("-o", "--output", default=None, help="写入文件（markdown 报告或 --json 的 JSON）；默认打印到 stdout")
     args = ap.parse_args()
 
     thread = args.thread or f"{args.case}-run"
-    result = run(args.case, thread, auto_approve=args.json)
+    result = run(args.case, thread, auto_approve=not args.interactive)
 
-    if args.json:
-        print(_dump(result))
+    text = _dump(result) if args.json else render_diagnosis(result)
+
+    if args.output:
+        out = Path(args.output)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text + "\n", encoding="utf-8")
+        print(f"已写入 {out}")
+        if not args.json:
+            _write_diagram(result, args.case, out)
     else:
-        report = result.get("report")
-        if report:
-            print("\n# 乳腺癌综合诊断报告\n")
-            print(f"**患者**：{report.patient_info}\n")
-            print("## 主要诊断\n" + "\n".join(f"{i}. {d}" for i, d in enumerate(report.main_diagnosis, 1)))
-            print("\n## 病理与分子分型依据\n" + report.molecular_table)
-            print("\n## TNM 分期\n" + report.tnm_staging)
-            print("\n## 诊疗经过\n" + report.treatment_timeline)
-            print("\n## 治疗评价\n" + report.treatment_evaluation)
-            print("\n## 后续建议\n" + "\n".join(f"{i}. {r}" for i, r in enumerate(report.recommendations, 1)))
-            print("\n## 卡点/待核实\n" + "\n".join(f"- {b}" for b in report.blockers))
-            print("\n> " + report.disclaimer)
+        print(text)
 
 
 if __name__ == "__main__":

@@ -24,3 +24,6 @@ Data_Cleaning/doc/
 
 # Env secrets（真实 key 不入库，模板见 langgraph_diagnosis/.env.example）
 .env
+
+# 诊断报告生成物（含患者派生临床内容，不入库）
+langgraph_diagnosis/reports/

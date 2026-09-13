@@ -19,6 +19,9 @@ class MolecularSubtype(BaseModel):
     her2: str | None = Field(None, description="HER2 IHC/FISH 原始值，如 'IHC 3+' / 'FISH 扩增' / 'IHC 1+'")
     ki67: str | None = Field(None, description="Ki-67 原始值，如 '30%'")
     fish: str | None = Field(None, description="FISH/ISH 结果，如 '扩增阳性' / '阴性' / None")
+    brca: str | None = Field(None, description="BRCA1/2：胚系突变 / 无突变 / 未检测（区分 IHC 散在染色，后者≠胚系）")
+    menopause: str | None = Field(None, description="绝经状态：绝经前 / 绝经后 / 未记录")
+    pd_l1_cps: str | None = Field(None, description="PD-L1 CPS 评分（如 CPS≥10）/ 未检测")
     subtype: str = Field(..., description="HER2阳性型 / 三阴型 / Luminal A / Luminal B(HER2-) / Luminal B(HER2+) / HER2低表达")
     is_her2_low: bool = Field(False, description="是否 HER2 低表达（IHC 1+，或 IHC 2+ 且 FISH 阴性）")
     rationale: str = Field(..., description="判读理由，须指回原文证据；未提供≠阴性")
@@ -30,11 +33,13 @@ class Staging(BaseModel):
     current_tnm: str | None = Field(None, description="当前分期（复发/转移后常 M1/Ⅳ期）")
     m_status: Literal["M0", "M1", "待核实"] = "M0"
     note: str = Field("", description="M 分期可疑未确诊时说明")
+    metastasis_sites: list[str] = Field(default_factory=list, description="转移部位列表（肝/骨/脑/肺/淋巴结/肾上腺/胸膜）")
+    treatment_line: str | None = Field(None, description="治疗线：一线 / 二线 / 三线及以上 / 待核验")
 
 
 class RedLineFlag(BaseModel):
     """安全红线（skill「不确定性与红线」）。命中则转人工，不机械往下走。"""
-    kind: Literal["M待核实", "下颌病变", "骨髓抑制", "脑膜转移", "内脏危象", "其他"] = "其他"
+    kind: str = Field("其他", description="红线类型：M待核实 / 下颌病变 / 骨髓抑制 / 脑膜转移 / 内脏危象 / 其他")
     description: str = Field(..., description="红线描述 + 病历证据")
     action: str = Field(..., description="应如何处理（先处理安全性 / 转 CNS MDT / 补活检 / 停）")
 
@@ -44,6 +49,16 @@ class DecisionChainStep(BaseModel):
     node: str = Field(..., description="节点 A..U")
     branch: str | None = Field(None, description="分支（分支节点才有），如 '是：M1（肝、骨）'")
     evidence: str = Field(..., description="病历原文证据")
+
+
+class RedLineList(BaseModel):
+    """一次返回全部红线（避免逐条循环导致的重复）。"""
+    red_lines: list[RedLineFlag] = Field(default_factory=list)
+
+
+class ChainPath(BaseModel):
+    """一次返回完整 A→U 决策链路径。"""
+    steps: list[DecisionChainStep] = Field(default_factory=list)
 
 
 class DiagnosisReport(BaseModel):
@@ -78,6 +93,7 @@ class PatientFeatures(BaseModel):
 
 class DiagnosisState(TypedDict, total=False):
     case_id: str
+    patient_name: str
     patient_path: str
     patient_data: dict[str, Any]
     features: PatientFeatures

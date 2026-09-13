@@ -6,7 +6,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# 按 config.py 自身位置定位 .env，避免依赖运行时的 CWD
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GUIDE_PATH = REPO_ROOT / "Data_Cleaning" / "process_ocr" / "output" / "guide.md"

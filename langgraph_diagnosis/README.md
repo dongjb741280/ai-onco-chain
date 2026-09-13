@@ -51,6 +51,12 @@ python main.py REAL-006
 python main.py REAL-006 --json
 ```
 
+报告写盘 + 决策链图一并生成（markdown 报告 + mermaid `.mmd` + 渲染 `.svg`/`.png`，需 `mmdc`）：
+
+```bash
+python main.py REAL-006 -o reports/REAL-006.md
+```
+
 ## 关键设计取舍
 
 1. **确定性 vs LLM 的分工**：JSON 解析、字段抽取、TNM 线索是确定性代码（可单测）；分子分型、分期判断、红线触发、A→U 走链、报告是 LLM（`temperature=0` + 结构化输出）。
@@ -68,10 +74,10 @@ python main.py REAL-006 --json
 | `guide_rag.py` | LlamaIndex 指南检索（向量/BM25 降级） |
 | `nodes.py` | 图节点：确定性节点 + LLM 判断节点 + interrupt 节点 |
 | `graph.py` | StateGraph 组装 + 条件边 + HITL |
-| `main.py` | CLI 入口（交互 / JSON 输出 / resume） |
+| `render.py` | 结构化结果 → markdown 报告 + 高亮决策链 mermaid |
+| `main.py` | CLI 入口（交互 / JSON / markdown+图 输出 / resume） |
 
 ## 已知边界（相对 skill 尚未覆盖）
 
-- **mermaid 决策链图**：skill 会渲染高亮图；这里未接 `mmdc`，`chain_path` 结构化后可按需再渲染（可在 `write_report` 后加一个节点）。
 - **红线多例输出**：`check_red_lines` 用「循环单例」方式收集，生产建议改成 list 输出的 Pydantic 模型（一次调用返回全部红线）。
 - **检索器缓存**：`guide_rag` 每次构建会重建索引，`nodes` 里用模块级单例兜底；生产建议在 `build_graph` 时注入构建好的 retriever。

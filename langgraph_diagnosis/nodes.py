@@ -12,10 +12,10 @@ from langchain_anthropic import ChatAnthropic
 import config
 from extractor import extract_features, load_patient
 from schemas import (
-    DecisionChainStep,
+    ChainPath,
     DiagnosisReport,
     MolecularSubtype,
-    RedLineFlag,
+    RedLineList,
     Staging,
 )
 
@@ -57,8 +57,10 @@ def _guide_block(sections: list[str]) -> str:
 def load_patient_node(state: dict[str, Any]) -> dict[str, Any]:
     path = state["patient_path"]
     pd = load_patient(path)
-    case_id = pd.get("standard_patient", {}).get("patient_id") or state.get("case_id", "unknown")
-    return {"case_id": case_id, "patient_data": pd}
+    sp = pd.get("standard_patient", {})
+    case_id = sp.get("patient_id") or state.get("case_id", "unknown")
+    patient_name = sp.get("patient_name")
+    return {"case_id": case_id, "patient_name": patient_name, "patient_data": pd}
 
 
 def extract_features_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -94,6 +96,7 @@ def judge_subtype_node(state: dict[str, Any]) -> dict[str, Any]:
 - Luminal A：HER2-、ER+、PR 高表达、Ki-67<14%；Luminal B(HER2-)：ER+、PR 低或-、Ki-67 高；Luminal B(HER2+)：HER2+、ER+
 - 双侧乳腺 / 原发 vs 转移灶受体不一致时，分开说明，以主导病灶为准
 - 未提供 ≠ 阴性：没写就留空/说明「未记录」，绝不默认判阴性
+- 生物标志物：BRCA1/2（区分胚系突变 vs IHC 散在染色，后者≠胚系）、绝经状态、PD-L1 CPS；未检测就写「未检测/未记录」
 
 【病历证据】
 {_features_block(f)}
@@ -112,6 +115,8 @@ def judge_staging_node(state: dict[str, Any]) -> dict[str, Any]:
 - 初始 = 最早记录；当前 = 最近（复发/转移后常 M1/Ⅳ期）
 - OCR 的 MO → M0；术后病理用 ypT/N（如 ypT2N1a）
 - 疑似转移但无活检/PET 确认 → m_status=待核实（不要硬定 M0/M1）
+- 未提供 ≠ 阴性：T/N 具体数值未记录就写「未记录」，绝不编造（如不能凭空写 pT2、N1）；只写病历明确给出的信息
+- 转移部位：列出明确的转移部位（肝/骨/脑/肺/淋巴结/肾上腺/胸膜）；治疗线：M1 时按全身治疗时间轴定一线/二线/三线及以上，时间轴不全写「待核验」
 
 【病历证据】
 {_features_block(f)}
@@ -123,38 +128,31 @@ def check_red_lines_node(state: dict[str, Any]) -> dict[str, Any]:
     f = state["features"]
     subtype = state.get("subtype")
     staging = state.get("staging")
-    prompt = f"""你是安全红线检查助手。逐条对照下列红线，命中才输出（没命中返回空列表）。
+    prompt = f"""你是安全红线检查助手。逐条对照下列红线，命中就输出；一条都不命中才返回空列表。
 
-红线清单：
-1. M 分期可疑未确诊（疑似转移但无活检/PET 确认）
-2. 下颌/颌骨病变（骨改良药使用者，需鉴别骨转移 vs 药物相关颌骨坏死 vs 感染）
-3. 严重骨髓抑制（重度血象下降、粒细胞缺乏、血小板显著降低）
-4. 脑膜转移（「脑膜转移/软脑膜/鞘内」）
-5. 内脏危象（快速进展的肝/肺等内脏转移伴器官功能受损）
+红线清单（按证据判定）：
+1. M 分期可疑未确诊：疑似转移但无活检/PET/影像确证（仅诊断名「继发恶性肿瘤」而无病理或影像依据）
+2. 下颌/颌骨病变：病历出现「下颌/颌骨」病变，且在使用骨改良药（护骨/双膦酸盐/地舒单抗）背景下，需鉴别骨转移 vs 药物相关颌骨坏死 vs 感染（病历明确写「需鉴别」即命中）
+3. 严重骨髓抑制：明确的重度血象下降/粒细胞缺乏/血小板显著降低（须有病历检验证据）
+4. 脑膜转移：明确「脑膜转移/软脑膜/鞘内」
+5. 内脏危象：快速进展的内脏转移且伴器官功能受损（须有「快速进展」或「器官功能受损」的明确证据；仅有内脏转移本身不算）
 
 【已判结果】分型={subtype.subtype if subtype else '未判'}；M={staging.m_status if staging else '未判'}
 【病历证据】
 {_features_block(f)}
+
+要求：同一类红线只列一次；按病历证据如实判断，有明确证据就列。
 """
-    llm = _llm().with_structured_output(RedLineFlag)
-    # 用多次调用收集红线（简化：单次结构化输出一个 flag，循环直到空）
-    # 生产建议用 list 输出；这里用「分多次」的明确写法便于演示
-    flags = []
-    for _ in range(4):
-        flag = llm.invoke(prompt + "\n\n只输出当前仍存在的最高优先级红线；若已无红线，输出 description='__NONE__'。")
-        if not flag or flag.description.strip() == "__NONE__":
-            break
-        flags.append(flag)
-        prompt += f"\n（已记录红线：{flag.kind}，继续找下一条）"
-    return {"red_lines": flags}
+    result = _llm().with_structured_output(RedLineList).invoke(prompt)
+    return {"red_lines": result.red_lines}
 
 
 def trace_chain_node(state: dict[str, Any]) -> dict[str, Any]:
     f = state["features"]
     subtype = state.get("subtype")
     staging = state.get("staging")
-    prompt = f"""你是 CSCO 乳腺癌决策链（A→U）追踪助手。只走该病例实际命中的节点，
-每个节点给：节点标签 + 走的分支（分支节点才有）+ 病历证据（一句原文/指标）。
+    prompt = f"""你是 CSCO 乳腺癌决策链（A→U）追踪助手。回溯该病例从初诊到当前的完整路径，
+只走实际命中的节点，每个节点给：节点标签 + 走的分支（分支节点才有）+ 病历证据（一句原文/指标）。
 
 决策链节点：A 初诊乳腺癌 / B 影像+病理+分子标志物 / C TNM分期+分子分型 / D M分期有无远处转移 /
 E 是否适合新辅助 / F 新辅助方案 / G 直接手术 / H 手术+病理反应 / I pCR还是残余 / J 术后辅助 /
@@ -162,23 +160,20 @@ K 强化辅助 / L 放疗+内分泌+抗HER2+免疫 / M 转移灶再活检 / N �
 O 序贯全身治疗 / P 特殊转移部位 / Q 骨改良药+局部 / R 脑实质or脑膜 / R1 脑实质局部治疗 /
 R2 脑膜治疗 / S 继续系统治疗 / T 疗效评估+毒性+MDT / U 长期随访。
 
+回溯要求：
+- 若病历经历「早期（M0）→ 复发转移（M1）」两段，两段都要呈现
+- 早期分两条：新辅助 → D(否)→E(是)→F→H→I→K→L；直接手术 → D(否)→E(否)→G→J→L（H/I 仅新辅助后有，直接手术不要走 H/I）
+- 复发后走 D(是)→M→N→O→P→…
+- 路径必须以 U（长期随访）结束，不要停在 T
+- 分支边标签只写「决策 + 病历证据」（如「是：M1（肺、骨、淋巴结）」「否：直接手术」），不要照抄模板示例里的部位
+- 未记录的分支不编造
+
 【已判结果】分型={subtype.subtype if subtype else '未判'}；M={staging.m_status if staging else '未判'}
 【病历证据】
 {_features_block(f)}
 """
-    llm = _llm().with_structured_output(DecisionChainStep)
-    # 逐节点生成，直到 LLM 返回空（node='__END__'）
-    path: list[DecisionChainStep] = []
-    seen: set[str] = set()
-    for _ in range(24):
-        step = llm.invoke(prompt + f"\n\n已走节点：{list(seen)}。给出下一步命中的节点；若已到 U 则 node='__END__'。")
-        if not step or step.node == "__END__":
-            break
-        if step.node in seen:
-            break
-        seen.add(step.node)
-        path.append(step)
-    return {"chain_path": path}
+    result = _llm().with_structured_output(ChainPath).invoke(prompt)
+    return {"chain_path": result.steps}
 
 
 def write_report_node(state: dict[str, Any]) -> dict[str, Any]:
