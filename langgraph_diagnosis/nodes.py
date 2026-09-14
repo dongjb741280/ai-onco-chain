@@ -124,6 +124,16 @@ def judge_staging_node(state: dict[str, Any]) -> dict[str, Any]:
     return {"staging": _llm().with_structured_output(Staging).invoke(prompt)}
 
 
+_RED_LINE_NEG_MARKERS = (
+    "不命中", "无需处理", "无需干预", "不构成", "未出现",
+)
+
+
+def _is_real_red_line(flag) -> bool:
+    """丢弃模型把「未命中」也包装成条目的占位输出（如 action=「无需处理」）。"""
+    return not any(m in f"{flag.description} {flag.action}" for m in _RED_LINE_NEG_MARKERS)
+
+
 def check_red_lines_node(state: dict[str, Any]) -> dict[str, Any]:
     f = state["features"]
     subtype = state.get("subtype")
@@ -141,10 +151,13 @@ def check_red_lines_node(state: dict[str, Any]) -> dict[str, Any]:
 【病历证据】
 {_features_block(f)}
 
-要求：同一类红线只列一次；按病历证据如实判断，有明确证据就列。
+要求：
+- 逐条对照，只有「有明确病历证据」命中的红线才列出；同一类只列一次
+- 未命中的红线绝不输出：不要为「血象正常 / 无下颌病变 / 无脑膜」等未命中情形生成占位条目（如 action=「无需处理」），留空即可
+- 反例：血象正常 → 不输出骨髓抑制；无「下颌/颌骨」字样 → 不输出下颌病变
 """
     result = _llm().with_structured_output(RedLineList).invoke(prompt)
-    return {"red_lines": result.red_lines}
+    return {"red_lines": [f for f in result.red_lines if _is_real_red_line(f)]}
 
 
 def trace_chain_node(state: dict[str, Any]) -> dict[str, Any]:
