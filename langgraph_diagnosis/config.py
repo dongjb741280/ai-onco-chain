@@ -34,6 +34,9 @@ GUIDE_RETRIEVER = os.getenv("GUIDE_RETRIEVER", "auto")  # auto | vector | bm25
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 GUIDE_TOP_K = int(os.getenv("GUIDE_TOP_K", "6"))
 
+# 图状态持久化（多轮记忆）：未设置 POSTGRES_URL 时退回内存 checkpointer
+POSTGRES_URL = os.getenv("POSTGRES_URL")  # 如 postgresql://user:pass@localhost:5432/db
+
 
 def resolve_patient_path(case: str | Path) -> Path:
     """支持 REAL-XXX 编号或直接文件路径。"""

@@ -11,6 +11,8 @@ from __future__ import annotations
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
+import config
+
 from nodes import (
     check_red_lines_node,
     extract_features_node,
@@ -31,6 +33,27 @@ def route_after_red_lines(state: DiagnosisState) -> str:
     if state.get("red_lines"):
         return "escalate"
     return "proceed"
+
+
+def _make_checkpointer():
+    """多轮记忆：优先 Postgres（持久化，可跨进程 resume），未配置/不可用时退回内存。"""
+    if config.POSTGRES_URL:
+        try:
+            from langgraph.checkpoint.postgres import PostgresSaver
+            from psycopg_pool import ConnectionPool
+            pool = ConnectionPool(
+                config.POSTGRES_URL,
+                kwargs={"autocommit": True},
+                min_size=1,
+                max_size=5,
+                open=True,
+            )
+            saver = PostgresSaver(pool)
+            saver.setup()
+            return saver
+        except Exception as e:
+            print(f"[checkpoint] Postgres 不可用，退回内存 checkpointer：{e}")
+    return MemorySaver()
 
 
 def build_graph():
@@ -65,7 +88,7 @@ def build_graph():
     g.add_edge("write_report", "human_approve")
     g.add_edge("human_approve", END)
 
-    return g.compile(checkpointer=MemorySaver())
+    return g.compile(checkpointer=_make_checkpointer())
 
 
 def get_graph():
