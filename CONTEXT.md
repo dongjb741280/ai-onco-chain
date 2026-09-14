@@ -1,4 +1,4 @@
-# breast-cancer
+# onco-chain
 
 从 CSCO 乳腺癌诊疗指南 markdown 构建的混合型医疗诊疗知识库，作为 LLM agent 回答 HER2+ 乳腺癌诊疗问题的检索底料，并对齐脱敏病例金标准做评测。
 
