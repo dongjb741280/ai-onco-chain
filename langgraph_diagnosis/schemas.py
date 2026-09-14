@@ -65,9 +65,8 @@ class TraceSummary(BaseModel):
     treatment_past: str = Field(..., description="既往治疗类别；无写 '未记录'")
 
 
-class TraceResult(BaseModel):
-    """一次返回完整决策链路径 + 头部摘要。"""
-    summary: TraceSummary
+class ChainPath(BaseModel):
+    """一次返回完整 A→U 决策链路径。"""
     steps: list[DecisionChainStep] = Field(default_factory=list)
 
 

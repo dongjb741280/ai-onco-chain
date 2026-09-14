@@ -13,11 +13,12 @@ from langchain_core.messages import HumanMessage, SystemMessage
 import config
 from extractor import extract_features, load_patient
 from schemas import (
+    ChainPath,
     DiagnosisReport,
     MolecularSubtype,
     RedLineList,
     Staging,
-    TraceResult,
+    TraceSummary,
 )
 
 # ---------- 工具 ----------
@@ -170,11 +171,28 @@ def check_red_lines_node(state: dict[str, Any]) -> dict[str, Any]:
     return {"red_lines": [f for f in result.red_lines if _is_real_red_line(f)]}
 
 
+def _chain_topology_error(steps, m_status: str | None) -> str | None:
+    """确定性校验决策链拓扑（用已判 M 分期做权威信号）；返回错误描述，无错误返回 None。"""
+    nodes = [s.node for s in steps]
+    has_m1 = "M" in nodes
+    if m_status in ("M0", "待核实") and has_m1:
+        return f"已判 M={m_status}（早期/待核实），链中不应走 M（M1 路径），应走 D(否)→E"
+    if m_status == "M1" and not has_m1:
+        return "已判 M=M1，链中必须走 D(是)→M（M1 路径）"
+    if nodes and nodes[-1] != "U":
+        return "路径必须以 U（长期随访）结束"
+    return None
+
+
 def trace_chain_node(state: dict[str, Any]) -> dict[str, Any]:
     f = state["features"]
     subtype = state.get("subtype")
     staging = state.get("staging")
-    system = """你是 CSCO 乳腺癌决策链（A→U）追踪助手。回溯该病例从初诊到当前的完整路径，
+    human = f"""【已判结果】分型={subtype.subtype if subtype else '未判'}；M={staging.m_status if staging else '未判'}
+【病历证据】
+{_features_block(f)}"""
+
+    chain_system = """你是 CSCO 乳腺癌决策链（A→U）追踪助手。回溯该病例从初诊到当前的完整路径，
 只走实际命中的节点，每个节点给：节点标签 + 走的分支（分支节点才有）+ 病历证据（一句原文/指标）。
 
 决策链节点：A 初诊乳腺癌 / B 影像+病理+分子标志物 / C TNM分期+分子分型 / D M分期有无远处转移 /
@@ -183,23 +201,33 @@ K 强化辅助 / L 放疗+内分泌+抗HER2+免疫 / M 转移灶再活检 / N �
 O 序贯全身治疗 / P 特殊转移部位 / Q 骨改良药+局部 / R 脑实质or脑膜 / R1 脑实质局部治疗 /
 R2 脑膜治疗 / S 继续系统治疗 / T 疗效评估+毒性+MDT / U 长期随访。
 
-回溯要求：
-- 若病历经历「早期（M0）→ 复发转移（M1）」两段，两段都要呈现
-- 早期分两条：新辅助 → D(否)→E(是)→F→H→I→K→L；直接手术 → D(否)→E(否)→G→J→L（H/I 仅新辅助后有，直接手术不要走 H/I）
-- 复发后走 D(是)→M→N→O→P→…
+回溯要求（D 是分叉点，两条分支不串）：
+- D(否，无远处转移/M0) → E；D(是，确诊有远处转移/M1) → M
+- M 分期为「待核实」（疑似转移但未确诊）时：走 D(否)→E（按早期/局部进展期继续），D 分支标签写「否：…待核实」，不要当成 M1 走 M
+- 早期(M0)路径（D=否）：新辅助 → E(是)→F→H→I→K→L；直接手术 → E(否)→G→J→L（H/I 仅新辅助后有，直接手术不要走 H/I）
+- 复发/转移(M1)路径（D=是）：M→N→O→P→…
+- 若病历经历「早期(M0)治疗 → 复发转移(M1)」两段（如诊断含「术后复发转移」）：两段都要完整呈现——先走早期段 A→B→C→D(否)→…→L，再走复发段 D(是)→M→…；不要因为最终是 M1 就省略早期段
 - 路径必须以 U（长期随访）结束，不要停在 T
 - 分支边标签只写「决策 + 病历证据」（如「是：M1（肺、骨、淋巴结）」「否：直接手术」），不要照抄模板示例里的部位
-- 未记录的分支不编造
+- 未记录的分支不编造"""
+    chain_result = _ask(ChainPath, chain_system, human)
+    # 确定性拓扑校验：D 分支与已判 M 分期不一致时，带纠错提示重试（最多 2 次）
+    m_status = staging.m_status if staging else None
+    chain_human = human
+    for _ in range(2):
+        err = _chain_topology_error(chain_result.steps, m_status)
+        if err is None:
+            break
+        chain_human = f"{human}\n\n[纠错] 上次路径拓扑有误：{err}。请重新走链。"
+        chain_result = _ask(ChainPath, chain_system, chain_human)
 
-另外给出 summary 头部摘要：
+    summary_system = """你是乳腺癌病例摘要助手。根据病历证据 + 已判分型，给出：
 - population：人群判断，写「符合 <人群> + 一句依据」；人群取 HER2阳性/HR阳性/HR阴性(三阴)/HER2低表达 之一（如「符合 HER2低表达：IHC 1+ 且 FISH 阴性」）
 - treatment_current：当前治疗类别（如「靶向+内分泌」），无写「未记录」
 - treatment_past：既往治疗类别（如「新辅助化疗→手术→辅助化疗」），无写「未记录」"""
-    human = f"""【已判结果】分型={subtype.subtype if subtype else '未判'}；M={staging.m_status if staging else '未判'}
-【病历证据】
-{_features_block(f)}"""
-    result = _ask(TraceResult, system, human)
-    return {"chain_path": result.steps, "trace_summary": result.summary}
+    summary_result = _ask(TraceSummary, summary_system, human)
+
+    return {"chain_path": chain_result.steps, "trace_summary": summary_result}
 
 
 def write_report_node(state: dict[str, Any]) -> dict[str, Any]:
