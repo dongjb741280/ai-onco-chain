@@ -6,7 +6,7 @@
 
 ## 仓库结构
 
-```
+```text
 .
 ├── langgraph_diagnosis/   # 主流水线：LangGraph 图编排 + LlamaIndex 指南 RAG + 结构化输出 + 人机协同
 ├── Data_Cleaning/         # 数据侧：CSCO 指南 PDF → OCR → 归一化 → guide.md；病例与金标准
@@ -26,7 +26,7 @@
 
 ### 图结构
 
-```
+```text
 START → load_patient → extract_features → retrieve_guide
       → judge_subtype → judge_staging → check_red_lines
       → 〔条件边〕 命中红线 → human_review(interrupt) → trace_chain
@@ -82,7 +82,7 @@ python main.py REAL-006 -o reports/REAL-006.md
 ### 文件
 
 | 文件 | 职责 |
-|---|---|
+| --- | --- |
 | `config.py` | 路径、病例映射、模型/检索配置（环境变量覆盖） |
 | `schemas.py` | Pydantic：结构化输出模型 + 图状态 |
 | `extractor.py` | 确定性字段抽取（权威字段 + 叙事兜底） |
