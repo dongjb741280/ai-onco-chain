@@ -17,3 +17,7 @@ modelscope>=1.20.0                          # 国内下载 embedding 模型（�
 # 配置与类型
 pydantic>=2.7.0
 python-dotenv>=1.0.0
+
+# Web 前端（SSE 流式诊断流水线）
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0

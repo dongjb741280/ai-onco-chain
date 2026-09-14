@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>诊疗决策链</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f7f8;
+    --surface: #ffffff;
+    --surface-2: #eef2f4;
+    --ink: #16212b;
+    --ink-soft: #46535f;
+    --muted: #6b7884;
+    --line: #dbe3e8;
+    --line-strong: #c4d0d7;
+
+    --accent: #0e7c86;
+    --accent-ink: #0a5a61;
+    --accent-soft: #e0eef0;
+
+    --success: #2f9e6e;
+    --warn: #c05621;
+    --warn-soft: #fbeadd;
+    --danger: #c0392b;
+    --danger-soft: #fbe7e5;
+
+    --node-bg: #fbfdfd;
+    --node-border: #c9d5db;
+    --node-dim: #eef1f3;
+    --edge: #c4d0d7;
+
+    --font-ui: "Noto Sans SC", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(22,33,43,.05), 0 8px 24px rgba(22,33,43,.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1418; --surface: #161d22; --surface-2: #1c242b;
+      --ink: #e7ecef; --ink-soft: #b6c2cb; --muted: #84929c;
+      --line: #263139; --line-strong: #35434d;
+      --accent: #35b6c2; --accent-ink: #7fd6dd; --accent-soft: #123338;
+      --success: #46c48d; --warn: #e0954e; --warn-soft: #33271a;
+      --danger: #e06a5c; --danger-soft: #34201d;
+      --node-bg: #1a2229; --node-border: #35434d; --node-dim: #20292f; --edge: #35434d;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1418; --surface: #161d22; --surface-2: #1c242b;
+    --ink: #e7ecef; --ink-soft: #b6c2cb; --muted: #84929c;
+    --line: #263139; --line-strong: #35434d;
+    --accent: #35b6c2; --accent-ink: #7fd6dd; --accent-soft: #123338;
+    --success: #46c48d; --warn: #e0954e; --warn-soft: #33271a;
+    --danger: #e06a5c; --danger-soft: #34201d;
+    --node-bg: #1a2229; --node-border: #35434d; --node-dim: #20292f; --edge: #35434d;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font-ui); font-size: 14px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { max-width: 1280px; margin: 0 auto; padding: 20px 20px 48px; display: flex; flex-direction: column; gap: 16px; }
+
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+  .brand .mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--accent), var(--accent-ink)); color: #fff; display: grid; place-items: center; font-family: var(--font-mono); font-weight: 600; font-size: 15px; }
+  .brand h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: .2px; }
+  .brand .sub { font-size: 12px; color: var(--muted); }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); letter-spacing: .3px; white-space: nowrap; }
+  .badge.err { background: var(--danger-soft); color: var(--danger); }
+
+  .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  select, button { font-family: var(--font-ui); font-size: 14px; }
+  select {
+    appearance: none; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink);
+    padding: 9px 34px 9px 12px; border-radius: 9px; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat;
+  }
+  select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button { border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); padding: 9px 16px; border-radius: 9px; cursor: pointer; font-weight: 600; transition: background .15s, border-color .15s, transform .05s; }
+  button:hover { background: var(--surface-2); }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+  button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+  button.danger:hover { filter: brightness(1.06); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  .status { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 9px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; font-weight: 600; color: var(--ink-soft); min-width: 120px; }
+  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .status.running .dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+  .status.paused .dot { background: var(--warn); animation: pulse 1s ease-in-out infinite; }
+  .status.done .dot { background: var(--success); }
+  .status.stopped .dot { background: var(--danger); }
+  .status.revised .dot { background: var(--warn); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+  .activity { font-family: var(--font-mono); font-size: 12px; color: var(--muted); padding: 8px 12px; border-radius: 8px; background: var(--surface-2); min-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .activity .caret { display: inline-block; width: 7px; height: 13px; background: var(--accent); vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 940px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .panel-head { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: 1px solid var(--line); }
+  .panel-head h2 { font-size: 14px; font-weight: 700; margin: 0; }
+  .panel-head .eyebrow { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: .4px; text-transform: uppercase; }
+  .panel-head .spacer { margin-left: auto; }
+  .legend { display: flex; gap: 12px; font-size: 11px; color: var(--muted); align-items: center; }
+  .legend .li { display: inline-flex; align-items: center; gap: 5px; }
+  .legend .sw { width: 10px; height: 10px; border-radius: 3px; }
+
+  .patient { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; }
+  .patient .kv { display: flex; gap: 6px; }
+  .patient .k { color: var(--muted); }
+  .patient .v { font-weight: 600; color: var(--ink-soft); }
+  .patient .v.mono { font-family: var(--font-mono); }
+
+  .canvas { padding: 6px; overflow-x: auto; }
+  .canvas svg { display: block; width: 100%; min-width: 720px; height: auto; }
+  .node rect, .node polygon { transition: fill .35s, stroke .35s; }
+  .node .code { font-family: var(--font-mono); font-weight: 600; }
+  .node .lbl { font-weight: 500; }
+  .node rect { fill: var(--node-bg); stroke: var(--node-border); stroke-width: 1.5px; }
+  .node polygon { fill: var(--node-bg); stroke: var(--node-border); stroke-width: 1.5px; }
+  .node .code { fill: var(--muted); }
+  .node .lbl { fill: var(--ink-soft); }
+  .node.visited rect { fill: var(--accent); stroke: var(--accent-ink); }
+  .node.visited polygon { fill: var(--accent); stroke: var(--accent-ink); }
+  .node.visited .code, .node.visited .lbl { fill: #fff; }
+  .node.current rect, .node.current polygon { stroke: var(--warn); stroke-width: 3px; }
+  .node.current .code { fill: var(--warn); }
+
+  .edge path { stroke: var(--edge); stroke-width: 1.5px; fill: none; transition: stroke .35s; }
+  .edge text { fill: var(--muted); font-family: var(--font-ui); font-size: 11px; }
+  .edge.hit path { stroke: var(--accent); stroke-width: 2px; }
+  .edge.hit text { fill: var(--accent-ink); font-weight: 600; }
+
+  .stepper { padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line); }
+  .step { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 5px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid transparent; }
+  .step .sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .step.active { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent); }
+  .step.active .sdot { background: var(--accent); animation: pulse 1s infinite; }
+  .step.done { color: var(--ink-soft); }
+  .step.done .sdot { background: var(--success); }
+  .step.skipped { opacity: .5; text-decoration: line-through; }
+
+  .tabs { display: flex; border-bottom: 1px solid var(--line); }
+  .tabs button { flex: 1; border: none; border-radius: 0; background: transparent; padding: 12px; font-size: 13px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs button.active { color: var(--ink); border-bottom-color: var(--accent); }
+  .tab-body { padding: 16px; max-height: 560px; overflow-y: auto; }
+
+  .report-sec { margin-bottom: 18px; animation: rise .4s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .report-sec h3 { font-size: 12px; font-weight: 700; color: var(--accent-ink); text-transform: uppercase; letter-spacing: .4px; margin: 0 0 8px; font-family: var(--font-mono); }
+  .report-sec p { margin: 0 0 8px; }
+  .report-sec .rpt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .report-sec .rpt-table th, .report-sec .rpt-table td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .report-sec .rpt-table th { color: var(--muted); font-weight: 600; font-size: 12px; background: var(--surface-2); }
+  .report-sec .rpt-table td { color: var(--ink-soft); }
+  .report-sec ul { margin: 0; padding-left: 18px; }
+  .report-sec li { margin-bottom: 4px; color: var(--ink-soft); }
+
+  .trace-line { font-family: var(--font-mono); font-size: 12.5px; padding: 6px 0; border-bottom: 1px dashed var(--line); animation: rise .3s ease both; }
+  .trace-line .tnode { color: var(--accent-ink); font-weight: 600; }
+  .trace-line .tbranch { color: var(--warn); }
+  .trace-line .tev { color: var(--muted); }
+
+  .empty { color: var(--muted); font-size: 13px; padding: 24px 8px; text-align: center; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(10,16,20,.45); display: none; place-items: center; padding: 20px; z-index: 50; }
+  .overlay.open { display: grid; }
+  .modal { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 24px 64px rgba(0,0,0,.28); max-width: 520px; width: 100%; padding: 22px; animation: rise .25s ease both; }
+  .modal h3 { margin: 0 0 6px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .modal .mdesc { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+  .redline-item { border: 1px solid var(--line); border-left: 3px solid var(--danger); border-radius: 9px; padding: 11px 13px; margin-bottom: 10px; background: var(--surface-2); }
+  .redline-item .rk { font-weight: 700; color: var(--danger); font-size: 13px; }
+  .redline-item .rd { font-size: 13px; color: var(--ink-soft); margin-top: 3px; }
+  .redline-item .ra { font-size: 12px; color: var(--warn); margin-top: 4px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .modal-actions button { flex: 1; min-width: 96px; }
+
+  footer { font-size: 12px; color: var(--muted); padding-top: 6px; }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  @media (max-width: 480px) { .app { padding: 14px 14px 40px; } .brand h1 { font-size: 16px; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="mark">链</div>
+      <div>
+        <h1>诊疗决策链</h1>
+        <div class="sub">乳腺癌 CSCO 诊疗流水线 · 前端</div>
+      </div>
+    </div>
+    <span class="badge" id="connBadge">连接中…</span>
+    <div class="controls">
+      <select id="caseSel" aria-label="选择病例"></select>
+      <button id="runBtn" class="primary" disabled>开始诊断</button>
+      <button id="stopBtn" class="danger" disabled>停止</button>
+      <div class="status" id="status"><span class="dot"></span><span id="statusText">空闲</span></div>
+    </div>
+  </header>
+
+  <div class="activity" id="activity"><span id="activityText">连接后端中…</span><span class="caret"></span></div>
+
+  <div class="grid">
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <span class="eyebrow">Decision chain</span>
+          <h2>决策链 A→U</h2>
+          <span class="spacer"></span>
+          <div class="legend">
+            <span class="li"><span class="sw" style="background:var(--accent)"></span>已走过</span>
+            <span class="li"><span class="sw" style="background:var(--node-dim);border:1px solid var(--node-border)"></span>未到</span>
+            <span class="li"><span class="sw" style="background:var(--warn)"></span>当前</span>
+          </div>
+        </div>
+        <div class="patient" id="patientStrip" style="display:none"></div>
+        <div class="canvas" id="canvas"></div>
+        <div class="stepper" id="stepper"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="tabs">
+        <button class="tab active" data-tab="report">诊断报告</button>
+        <button class="tab" data-tab="trace">决策链追踪</button>
+      </div>
+      <div class="tab-body">
+        <div id="reportBody"><div class="empty">运行后在此流式展示诊断报告</div></div>
+        <div id="traceBody" hidden><div class="empty">运行后在此追踪决策链节点</div></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>产出自 CSCO 指南，属临床辅助，最终以主诊医师 / MDT 决策为准。</footer>
+</div>
+
+<div class="overlay" id="overlay"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- decision chain 静态布局 ----------
+  var NODES = [
+    { id: "A",  label: "初诊乳腺癌", type: "rect" },
+    { id: "B",  label: "影像·病理·分子", type: "rect" },
+    { id: "C",  label: "分期与分子分型", type: "rect" },
+    { id: "D",  label: "M 分期", type: "diamond" },
+    { id: "E",  label: "是否新辅助", type: "diamond" },
+    { id: "F",  label: "新辅助方案", type: "rect" },
+    { id: "G",  label: "直接手术", type: "rect" },
+    { id: "H",  label: "手术·病理反应", type: "rect" },
+    { id: "I",  label: "pCR / 残余", type: "diamond" },
+    { id: "J",  label: "术后辅助", type: "rect" },
+    { id: "K",  label: "强化辅助", type: "rect" },
+    { id: "L",  label: "放疗·内分泌·抗HER2", type: "rect" },
+    { id: "M",  label: "转移灶再活检", type: "rect" },
+    { id: "N",  label: "评估既往治疗", type: "rect" },
+    { id: "O",  label: "序贯全身治疗", type: "rect" },
+    { id: "P",  label: "特殊转移部位", type: "diamond" },
+    { id: "Q",  label: "骨改良药", type: "rect" },
+    { id: "R",  label: "脑转移", type: "diamond" },
+    { id: "R1", label: "脑实质", type: "rect" },
+    { id: "R2", label: "脑膜", type: "rect" },
+    { id: "S",  label: "系统治疗", type: "rect" },
+    { id: "T",  label: "疗效评估·MDT", type: "rect" },
+    { id: "U",  label: "长期随访", type: "rect" }
+  ];
+  var POS = {
+    A: [600, 36],  B: [600, 128], C: [600, 220], D: [600, 316],
+    E: [330, 416], F: [170, 520], G: [470, 520], H: [170, 616],
+    I: [170, 712], J: [90, 816],  K: [250, 816], L: [330, 916],
+    M: [850, 416], N: [850, 512], O: [850, 608], P: [850, 708],
+    Q: [680, 816], R: [850, 816], S: [1020, 816], R1: [780, 916], R2: [950, 916],
+    T: [600, 1040], U: [600, 1136]
+  };
+  var EDGES = [
+    ["A", "B", ""], ["B", "C", ""], ["C", "D", ""],
+    ["D", "E", "否：M0 早期"], ["D", "M", "是：M1 复发/转移"],
+    ["E", "F", "是"], ["E", "G", "否"],
+    ["F", "H", ""], ["H", "I", ""], ["G", "J", ""],
+    ["I", "J", "pCR"], ["I", "K", "non-pCR"],
+    ["J", "L", ""], ["K", "L", ""],
+    ["M", "N", ""], ["N", "O", ""], ["O", "P", ""],
+    ["P", "Q", "骨转移"], ["P", "R", "脑转移"], ["P", "S", "其他内脏"],
+    ["R", "R1", "脑实质"], ["R", "R2", "脑膜"],
+    ["L", "T", ""], ["Q", "T", ""], ["R1", "T", ""], ["R2", "T", ""], ["S", "T", ""],
+    ["T", "U", ""]
+  ];
+  var ORDER = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","R1","R2","S","T","U"];
+  var NODE_BY_ID = {};
+  NODES.forEach(function (n) { NODE_BY_ID[n.id] = n; });
+
+  var HW = { rect: 75, diamond: 78 }, HH = { rect: 23, diamond: 30 };
+  function clip(from, to, hw, hh) {
+    var dx = to.x - from.x, dy = to.y - from.y;
+    var len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+    var tx = Math.abs(ux) > 1e-6 ? hw / Math.abs(ux) : Infinity;
+    var ty = Math.abs(uy) > 1e-6 ? hh / Math.abs(uy) : Infinity;
+    var d = Math.min(tx, ty);
+    return { x: to.x - ux * d, y: to.y - uy * d };
+  }
+
+  var nodeG = {}, edgeG = {};
+  function buildSVG() {
+    var c = document.getElementById("canvas");
+    var parts = ['<svg viewBox="0 0 1130 1180" role="img" aria-label="乳腺癌诊疗决策链 A 到 U 流程图">'];
+    parts.push('<g class="edges">');
+    EDGES.forEach(function (e) {
+      var a = { x: POS[e[0]][0], y: POS[e[0]][1] };
+      var b = { x: POS[e[1]][0], y: POS[e[1]][1] };
+      var ta = NODE_BY_ID[e[0]], tb = NODE_BY_ID[e[1]];
+      var p1 = clip(b, a, HW[ta.type], HH[ta.type]);
+      var p2 = clip(a, b, HW[tb.type], HH[tb.type]);
+      var mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
+      parts.push('<g class="edge" data-edge="' + e[0] + ':' + e[1] + '">');
+      parts.push('<path d="M ' + p1.x + ' ' + p1.y + ' L ' + p2.x + ' ' + p2.y + '" />');
+      if (e[2]) parts.push('<text x="' + mx + '" y="' + (my - 5) + '" text-anchor="middle">' + e[2] + '</text>');
+      parts.push('</g>');
+    });
+    parts.push('</g><g class="nodes">');
+    NODES.forEach(function (n) {
+      var x = POS[n.id][0], y = POS[n.id][1], shape;
+      if (n.type === "diamond") {
+        shape = '<polygon points="' + x + ',' + (y - 30) + ' ' + (x + 78) + ',' + y + ' ' + x + ',' + (y + 30) + ' ' + (x - 78) + ',' + y + '" />';
+      } else {
+        shape = '<rect x="' + (x - 75) + '" y="' + (y - 23) + '" width="150" height="46" rx="10" />';
+      }
+      parts.push('<g class="node" data-id="' + n.id + '">' + shape +
+        '<text class="code" x="' + x + '" y="' + (y - 3) + '" text-anchor="middle" font-size="10">' + n.id + '</text>' +
+        '<text class="lbl" x="' + x + '" y="' + (y + 13) + '" text-anchor="middle" font-size="12">' + n.label + '</text>' + '</g>');
+    });
+    parts.push('</g></svg>');
+    c.innerHTML = parts.join("");
+    c.querySelectorAll(".node").forEach(function (g) { nodeG[g.getAttribute("data-id")] = g; });
+    c.querySelectorAll(".edge").forEach(function (g) { edgeG[g.getAttribute("data-edge")] = g; });
+  }
+
+  // ---------- stepper ----------
+  var PIPE = [
+    ["load_patient", "读取病历"], ["extract_features", "抽取特征"], ["retrieve_guide", "检索指南"],
+    ["judge_subtype", "分子分型"], ["judge_staging", "TNM分期"], ["check_red_lines", "红线检查"],
+    ["human_review", "红线复核"], ["trace_chain", "决策链回溯"], ["write_report", "生成报告"],
+    ["human_approve", "报告终审"]
+  ];
+  var PIPE_LABEL = {};
+  PIPE.forEach(function (p) { PIPE_LABEL[p[0]] = p[1]; });
+  var stepEls = {};
+  function buildStepper() {
+    var s = document.getElementById("stepper");
+    s.innerHTML = PIPE.map(function (p) { return '<span class="step" data-step="' + p[0] + '"><span class="sdot"></span>' + p[1] + "</span>"; }).join("");
+    s.querySelectorAll(".step").forEach(function (el) { stepEls[el.getAttribute("data-step")] = el; });
+  }
+  function setStep(id, st) { var el = stepEls[id]; if (el) el.className = "step" + (st ? " " + st : ""); }
+
+  // ---------- DOM refs ----------
+  var $ = function (s) { return document.querySelector(s); };
+  var caseSel = $("#caseSel"), runBtn = $("#runBtn"), stopBtn = $("#stopBtn");
+  var statusEl = $("#status"), statusText = $("#statusText"), activityText = $("#activityText");
+  var patientStrip = $("#patientStrip"), reportBody = $("#reportBody"), traceBody = $("#traceBody");
+  var overlay = $("#overlay"), connBadge = $("#connBadge");
+
+  var visitedSet = new Set();
+  var threadId = null, es = null, runToken = 0;
+
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function setStatus(st, text) { statusEl.className = "status" + (st ? " " + st : ""); statusText.textContent = text; }
+  function setActivity(text) {
+    activityText.parentNode.querySelectorAll(".caret").forEach(function (c) { c.remove(); });
+    activityText.textContent = text;
+    activityText.parentNode.appendChild(document.createElement("span")).className = "caret";
+  }
+
+  function lightNode(id) {
+    if (visitedSet.has(id)) return;
+    visitedSet.add(id);
+    if (nodeG[id]) nodeG[id].classList.add("visited");
+    markEdges();
+  }
+  function markEdges() {
+    EDGES.forEach(function (e) {
+      var g = edgeG[e[0] + ":" + e[1]];
+      if (g && visitedSet.has(e[0]) && visitedSet.has(e[1])) g.classList.add("hit");
+    });
+  }
+  function resetChain() {
+    visitedSet.clear();
+    Object.keys(nodeG).forEach(function (k) { nodeG[k].className = "node"; });
+    Object.keys(edgeG).forEach(function (k) { edgeG[k].className = "edge"; });
+  }
+  function resetStepper() { PIPE.forEach(function (p) { setStep(p[0], ""); }); }
+  function resetPanels() {
+    reportBody.innerHTML = '<div class="empty">运行后在此流式展示诊断报告</div>';
+    traceBody.innerHTML = '<div class="empty">运行后在此追踪决策链节点</div>';
+    patientStrip.style.display = "none";
+  }
+  function switchTab(name) {
+    document.querySelectorAll(".tabs button").forEach(function (b) { b.classList.toggle("active", b.getAttribute("data-tab") === name); });
+    reportBody.hidden = name !== "report";
+    traceBody.hidden = name !== "trace";
+  }
+
+  // ---------- 渲染 ----------
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function inline(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>"); }
+
+  function mdTable(text) {
+    if (!text) return '<p class="empty">（无）</p>';
+    var lines = String(text).trim().split("\n").filter(function (l) { return l.trim().indexOf("|") === 0; });
+    if (lines.length < 2) return "<p>" + inline(text) + "</p>";
+    var rows = lines.map(function (l) { return l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(function (c) { return c.trim(); }); });
+    var header = rows[0], body = rows.slice(2);
+    var html = '<table class="rpt-table"><thead><tr>' + header.map(function (h) { return "<th>" + inline(h) + "</th>"; }).join("") + "</tr></thead><tbody>";
+    body.forEach(function (r) { html += "<tr>" + r.map(function (c) { return "<td>" + inline(c) + "</td>"; }).join("") + "</tr>"; });
+    return html + "</tbody></table>";
+  }
+  function rptList(items) {
+    if (!items || !items.length) return '<p class="empty">（无）</p>';
+    return "<ul>" + items.map(function (i) { return "<li>" + inline(i) + "</li>"; }).join("") + "</ul>";
+  }
+  function reportSections(report) {
+    return [
+      { title: "主要诊断", html: "<p>" + (report.main_diagnosis || []).map(function (d) { return esc(d); }).join("<br>") + "</p>" },
+      { title: "病理与分子分型", html: mdTable(report.molecular_table) },
+      { title: "TNM 分期", html: "<p>" + esc(report.tnm_staging) + "</p>" },
+      { title: "诊疗经过", html: mdTable(report.treatment_timeline) },
+      { title: "治疗评价（对照指南）", html: mdTable(report.treatment_evaluation) },
+      { title: "后续建议", html: rptList(report.recommendations) },
+      { title: "卡点 / 待核实", html: rptList(report.blockers) }
+    ];
+  }
+  function appendReport(sec) {
+    var first = reportBody.querySelector(".empty"); if (first) reportBody.innerHTML = "";
+    var d = document.createElement("div"); d.className = "report-sec";
+    d.innerHTML = "<h3>" + sec.title + "</h3>" + sec.html;
+    reportBody.appendChild(d); reportBody.scrollTop = reportBody.scrollHeight;
+  }
+  function appendTrace(step) {
+    var first = traceBody.querySelector(".empty"); if (first) traceBody.innerHTML = "";
+    var line = document.createElement("div"); line.className = "trace-line";
+    var label = (NODE_BY_ID[step.node] || {}).label || step.node;
+    var br = step.branch ? ' <span class="tbranch">← ' + esc(step.branch) + "</span>" : "";
+    line.innerHTML = '<span class="tnode">[' + esc(step.node) + "]</span> " + esc(label) + br +
+      '<br><span class="tev">↳ ' + esc(step.evidence) + "</span>";
+    traceBody.appendChild(line); traceBody.scrollTop = traceBody.scrollHeight;
+  }
+  function showPatientStrip(p) {
+    patientStrip.style.display = "flex";
+    var cells = [];
+    if (p.name) cells.push('<span class="kv"><span class="k">患者</span><span class="v">' + esc(p.name) + "</span></span>");
+    if (p.gender || p.age) cells.push('<span class="kv"><span class="k">性别/年龄</span><span class="v">' + esc(p.gender || "?") + " · " + esc(p.age || "?") + "岁</span></span>");
+    if (p.diagnoses && p.diagnoses.length) cells.push('<span class="kv"><span class="k">诊断</span><span class="v">' + esc(p.diagnoses.join("、")) + "</span></span>");
+    if (p.subtype) cells.push('<span class="kv"><span class="k">分子分型</span><span class="v">' + esc(p.subtype) + "</span></span>");
+    if (p.staging) cells.push('<span class="kv"><span class="k">分期</span><span class="v mono">' + esc(p.staging) + "</span></span>");
+    patientStrip.innerHTML = cells.join("");
+  }
+
+  // ---------- modal ----------
+  function openModal(inner) { overlay.innerHTML = '<div class="modal">' + inner + "</div>"; overlay.classList.add("open"); }
+  function closeModal() { overlay.classList.remove("open"); overlay.innerHTML = ""; }
+
+  function openRedLineModal(lines) {
+    setStatus("paused", "等待复核");
+    setActivity("命中红线 — 暂停，等待人工复核");
+    var items = (lines || []).map(function (l) {
+      return '<div class="redline-item"><div class="rk">' + esc(l.kind) + '</div>' +
+        '<div class="rd">' + esc(l.description) + '</div><div class="ra">建议：' + esc(l.action) + "</div></div>";
+    }).join("");
+    openModal('<h3>⚠ 命中安全红线</h3><p class="mdesc">以下红线需人工复核后再决定是否继续：</p>' + items +
+      '<div class="modal-actions">' +
+      '<button class="primary" data-act="proceed">继续（已人工评估）</button>' +
+      '<button class="danger" data-act="stop">终止</button>' +
+      '<button data-act="revise">补充后重跑</button></div>');
+    overlay.querySelector(".modal-actions").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      closeModal(); resume(b.getAttribute("data-act"));
+    });
+  }
+  function openApprovalModal() {
+    setStatus("paused", "等待终审");
+    setActivity("报告已生成 — 等待人工终审");
+    openModal('<h3>✓ 报告终审</h3><p class="mdesc">诊断报告与决策链已生成，请复核后确认。</p>' +
+      '<div class="modal-actions">' +
+      '<button class="primary" data-act="approve">通过</button>' +
+      '<button data-act="revise">返回修改</button></div>');
+    overlay.querySelector(".modal-actions").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      closeModal(); resume(b.getAttribute("data-act"));
+    });
+  }
+
+  // ---------- 后端交互 ----------
+  function resume(decision) {
+    fetch("/api/resume/" + threadId, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision: decision }) }).catch(function () {});
+  }
+  function stopRun() {
+    fetch("/api/stop/" + threadId, { method: "POST" }).catch(function () {});
+    if (es) { es.close(); es = null; }
+    closeModal();
+    setStatus("stopped", "已停止");
+    setActivity("已终止当前运行");
+    stopBtn.disabled = true; runBtn.disabled = false;
+  }
+
+  function startRun() {
+    var caseId = caseSel.value;
+    if (!caseId) return;
+    var token = ++runToken;
+    resetChain(); resetStepper(); resetPanels();
+    threadId = caseId + "-" + Date.now();
+    runBtn.disabled = true; stopBtn.disabled = false;
+    setStatus("running", "运行中");
+    setActivity("启动流水线 …");
+
+    es = new EventSource("/api/stream/" + threadId + "?case_id=" + encodeURIComponent(caseId));
+
+    es.addEventListener("status", function (ev) {
+      var d = JSON.parse(ev.data);
+      if (d.value === "running") { setStatus("running", "运行中"); }
+      else if (d.value === "paused") { setStatus("paused", "等待复核"); }
+      else if (d.value === "done") { setStatus("done", "完成"); setActivity("诊断完成 — 报告与决策链已生成"); endRun(); }
+      else if (d.value === "stopped") { setStatus("stopped", "已停止"); setActivity("已终止运行"); endRun(); }
+      else if (d.value === "revised") { setStatus("revised", "待修改"); setActivity("已标记待补充，请调整后重跑"); endRun(); }
+    });
+
+    es.addEventListener("node", function (ev) { if (token !== runToken) return; onNode(JSON.parse(ev.data)); });
+    es.addEventListener("interrupt", function (ev) { if (token !== runToken) return; onInterrupt(JSON.parse(ev.data)); });
+    es.addEventListener("error", function (ev) {
+      var msg = "未知错误"; try { msg = JSON.parse(ev.data).message || msg; } catch (e) {}
+      setStatus("stopped", "出错"); setActivity("运行出错：" + msg); endRun();
+    });
+    es.onerror = function () { if (es) { es.close(); es = null; if (token === runToken) { setActivity("连接中断"); endRun(); } } };
+  }
+
+  function endRun() {
+    if (es) { es.close(); es = null; }
+    stopBtn.disabled = true; runBtn.disabled = false;
+  }
+
+  // 患者信息汇总（分阶段补全）
+  var patient = {};
+
+  function onNode(d) {
+    var name = d.name;
+    if (PIPE_LABEL[name]) {
+      setStep(name, "done");
+      if (name === "check_red_lines") {
+        setStep("human_review", (d.red_lines && d.red_lines.length) ? "active" : "skipped");
+      }
+      setActivity("✓ " + PIPE_LABEL[name]);
+    }
+    if (d.patient) { patient.name = d.patient.name; patient.case_id = d.patient.case_id; }
+    if (d.features) { patient.gender = d.features.gender; patient.age = d.features.age; patient.diagnoses = d.features.diagnoses; }
+    if (d.subtype) { patient.subtype = d.subtype.subtype; lightNode("A"); lightNode("B"); lightNode("C"); }
+    if (d.staging) {
+      patient.staging = d.staging.current_tnm || d.staging.initial_tnm || d.staging.m_status;
+      lightNode("D");
+    }
+    showPatientStrip(patient);
+
+    if (name === "trace_chain" && d.chain_path) {
+      animateChain(d.chain_path);
+    } else if (name === "write_report" && d.report) {
+      animateReport(reportSections(d.report));
+    }
+  }
+
+  function onInterrupt(d) {
+    if (d.type === "red_line_review") openRedLineModal(d.red_lines);
+    else if (d.type === "report_approval") openApprovalModal();
+  }
+
+  // 决策链逐节点点亮（依据真实 chain_path 的 visited 集合，按规范顺序揭示）
+  async function animateChain(chainPath) {
+    var visited = {};
+    var traceByNode = {};
+    chainPath.forEach(function (s) { visited[s.node] = true; if (!traceByNode[s.node]) traceByNode[s.node] = s; });
+    switchTab("trace");
+    var token = runToken;
+    for (var i = 0; i < ORDER.length; i++) {
+      var id = ORDER[i];
+      if (!visited[id] || visitedSet.has(id)) continue;
+      if (nodeG[id]) nodeG[id].classList.add("current");
+      await sleep(300); if (token !== runToken) return;
+      lightNode(id);
+      if (nodeG[id]) nodeG[id].classList.remove("current");
+      if (traceByNode[id]) appendTrace(traceByNode[id]);
+      await sleep(160); if (token !== runToken) return;
+    }
+    switchTab("report");
+  }
+
+  async function animateReport(sections) {
+    var token = runToken;
+    for (var i = 0; i < sections.length; i++) {
+      appendReport(sections[i]);
+      await sleep(360); if (token !== runToken) return;
+    }
+  }
+
+  // ---------- 初始化 ----------
+  function loadCases() {
+    fetch("/api/cases").then(function (r) { return r.json(); }).then(function (list) {
+      caseSel.innerHTML = "";
+      list.forEach(function (c) { var o = document.createElement("option"); o.value = c.id; o.textContent = c.id + " · " + c.label; caseSel.appendChild(o); });
+      runBtn.disabled = false;
+      connBadge.textContent = "已连接"; connBadge.className = "badge";
+      setActivity("就绪 — 选择病例后点击「开始诊断」");
+    }).catch(function () {
+      connBadge.textContent = "后端未连接"; connBadge.className = "badge err";
+      setActivity("无法连接后端，请先启动 server.py");
+    });
+  }
+
+  function init() {
+    buildSVG();
+    buildStepper();
+    runBtn.addEventListener("click", startRun);
+    stopBtn.addEventListener("click", stopRun);
+    document.querySelectorAll(".tabs button").forEach(function (b) {
+      b.addEventListener("click", function () { switchTab(b.getAttribute("data-tab")); });
+    });
+    loadCases();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
