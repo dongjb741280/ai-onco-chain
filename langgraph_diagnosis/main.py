@@ -63,6 +63,7 @@ def _dump(result: dict) -> str:
         "staging": result.get("staging").model_dump() if result.get("staging") else None,
         "red_lines": [r.model_dump() for r in result.get("red_lines", [])],
         "chain_path": [s.model_dump() for s in result.get("chain_path", [])],
+        "trace_summary": result.get("trace_summary").model_dump() if result.get("trace_summary") else None,
         "report": result.get("report").model_dump() if result.get("report") else None,
     }
     return json.dumps(out, ensure_ascii=False, indent=2)

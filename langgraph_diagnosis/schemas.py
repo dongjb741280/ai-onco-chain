@@ -25,6 +25,7 @@ class MolecularSubtype(BaseModel):
     subtype: str = Field(..., description="HER2阳性型 / 三阴型 / Luminal A / Luminal B(HER2-) / Luminal B(HER2+) / HER2低表达")
     is_her2_low: bool = Field(False, description="是否 HER2 低表达（IHC 1+，或 IHC 2+ 且 FISH 阴性）")
     rationale: str = Field(..., description="判读理由，须指回原文证据；未提供≠阴性")
+    summary: str = Field("", description="简洁分型摘要（图标题用），如 'ER 98%+ / PR 80%+ / Her-2(0) / Ki67 30%+'；原发/转移灶不一致时突出差异")
 
 
 class Staging(BaseModel):
@@ -35,6 +36,7 @@ class Staging(BaseModel):
     note: str = Field("", description="M 分期可疑未确诊时说明")
     metastasis_sites: list[str] = Field(default_factory=list, description="转移部位列表（肝/骨/脑/肺/淋巴结/肾上腺/胸膜）")
     treatment_line: str | None = Field(None, description="治疗线：一线 / 二线 / 三线及以上 / 待核验")
+    metastasis_detail: str | None = Field(None, description="转移部位详情（含子部位），如 '骨（肋骨、胸椎）；脑（小脑、枕叶）；肺；肝'；无则 None")
 
 
 class RedLineFlag(BaseModel):
@@ -56,8 +58,16 @@ class RedLineList(BaseModel):
     red_lines: list[RedLineFlag] = Field(default_factory=list)
 
 
-class ChainPath(BaseModel):
-    """一次返回完整 A→U 决策链路径。"""
+class TraceSummary(BaseModel):
+    """决策链文字追踪头部摘要（skill 第五步的 人群判断 / 治疗当前-既往）。"""
+    population: str = Field(..., description="人群判断：符合/不符合/部分符合 <人群:HER2+/HR+/HR−/HER2低表达> + 一句依据")
+    treatment_current: str = Field(..., description="当前治疗类别（如 '靶向+内分泌'）；无写 '未记录'")
+    treatment_past: str = Field(..., description="既往治疗类别；无写 '未记录'")
+
+
+class TraceResult(BaseModel):
+    """一次返回完整决策链路径 + 头部摘要。"""
+    summary: TraceSummary
     steps: list[DecisionChainStep] = Field(default_factory=list)
 
 
@@ -102,5 +112,6 @@ class DiagnosisState(TypedDict, total=False):
     staging: Staging
     red_lines: list[RedLineFlag]
     chain_path: list[DecisionChainStep]
+    trace_summary: TraceSummary
     report: DiagnosisReport
     human_decision: str | None

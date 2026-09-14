@@ -12,11 +12,11 @@ from langchain_anthropic import ChatAnthropic
 import config
 from extractor import extract_features, load_patient
 from schemas import (
-    ChainPath,
     DiagnosisReport,
     MolecularSubtype,
     RedLineList,
     Staging,
+    TraceResult,
 )
 
 # ---------- 工具 ----------
@@ -97,6 +97,7 @@ def judge_subtype_node(state: dict[str, Any]) -> dict[str, Any]:
 - 双侧乳腺 / 原发 vs 转移灶受体不一致时，分开说明，以主导病灶为准
 - 未提供 ≠ 阴性：没写就留空/说明「未记录」，绝不默认判阴性
 - 生物标志物：BRCA1/2（区分胚系突变 vs IHC 散在染色，后者≠胚系）、绝经状态、PD-L1 CPS；未检测就写「未检测/未记录」
+- summary：给出一行简洁分型摘要（图标题用），格式如 'ER 98%+ / PR 80%+ / Her-2(0) / Ki67 30%+'；原发 vs 转移灶不一致时突出差异（如 '原发 FISH+；脑转移灶 HER-2 3+'）
 
 【病历证据】
 {_features_block(f)}
@@ -117,6 +118,7 @@ def judge_staging_node(state: dict[str, Any]) -> dict[str, Any]:
 - 疑似转移但无活检/PET 确认 → m_status=待核实（不要硬定 M0/M1）
 - 未提供 ≠ 阴性：T/N 具体数值未记录就写「未记录」，绝不编造（如不能凭空写 pT2、N1）；只写病历明确给出的信息
 - 转移部位：列出明确的转移部位（肝/骨/脑/肺/淋巴结/肾上腺/胸膜）；治疗线：M1 时按全身治疗时间轴定一线/二线/三线及以上，时间轴不全写「待核验」
+- metastasis_detail：若有转移，给出含子部位的详情，如 '骨（肋骨、胸椎）；脑（小脑、枕叶）；肺；肝'；无转移则留空
 
 【病历证据】
 {_features_block(f)}
@@ -181,12 +183,17 @@ R2 脑膜治疗 / S 继续系统治疗 / T 疗效评估+毒性+MDT / U 长期随
 - 分支边标签只写「决策 + 病历证据」（如「是：M1（肺、骨、淋巴结）」「否：直接手术」），不要照抄模板示例里的部位
 - 未记录的分支不编造
 
+另外给出 summary 头部摘要：
+- population：人群判断，写「符合 <人群> + 一句依据」；人群取 HER2阳性/HR阳性/HR阴性(三阴)/HER2低表达 之一（如「符合 HER2低表达：IHC 1+ 且 FISH 阴性」）
+- treatment_current：当前治疗类别（如「靶向+内分泌」），无写「未记录」
+- treatment_past：既往治疗类别（如「新辅助化疗→手术→辅助化疗」），无写「未记录」
+
 【已判结果】分型={subtype.subtype if subtype else '未判'}；M={staging.m_status if staging else '未判'}
 【病历证据】
 {_features_block(f)}
 """
-    result = _llm().with_structured_output(ChainPath).invoke(prompt)
-    return {"chain_path": result.steps}
+    result = _llm().with_structured_output(TraceResult).invoke(prompt)
+    return {"chain_path": result.steps, "trace_summary": result.summary}
 
 
 def write_report_node(state: dict[str, Any]) -> dict[str, Any]:
