@@ -1,0 +1,167 @@
+import { useEffect, useState } from 'react'
+import useDiagnosis from './useDiagnosis'
+import DecisionChain from './components/DecisionChain'
+import ReviewModal from './components/ReviewModal'
+import { PIPE } from './constants'
+import { NODE_BY_ID } from './decisionChain'
+import { esc } from './render'
+
+const STATUS_TEXT = {
+  idle: '空闲',
+  running: '运行中',
+  paused: '等待复核',
+  done: '完成',
+  stopped: '已停止',
+  revised: '待修改',
+  error: '出错',
+}
+
+function StatusBar({ status }) {
+  return (
+    <div className={'status' + (status ? ' ' + status : '')}>
+      <span className="dot" />
+      <span>{STATUS_TEXT[status] || '空闲'}</span>
+    </div>
+  )
+}
+
+function PatientStrip({ patient }) {
+  const cells = []
+  if (patient.name) cells.push(['患者', patient.name])
+  if (patient.gender || patient.age) cells.push(['性别/年龄', `${patient.gender || '?'} · ${patient.age || '?'}岁`])
+  if (patient.diagnoses && patient.diagnoses.length) cells.push(['诊断', patient.diagnoses.join('、')])
+  if (patient.subtype) cells.push(['分子分型', patient.subtype])
+  if (patient.staging) cells.push(['分期', patient.staging])
+  if (!cells.length) return null
+  return (
+    <div className="patient">
+      {cells.map(([k, v], i) => (
+        <span className="kv" key={i}>
+          <span className="k">{k}</span>
+          <span className={'v' + (k === '分期' ? ' mono' : '')}>{esc(v)}</span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function Stepper({ steps }) {
+  return (
+    <div className="stepper">
+      {PIPE.map(([id, label]) => (
+        <span key={id} className={'step' + (steps[id] ? ' ' + steps[id] : '')}>
+          <span className="sdot" />
+          {label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function TraceLine({ step }) {
+  const label = (NODE_BY_ID[step.node] || {}).label || step.node
+  return (
+    <div className="trace-line">
+      <span className="tnode">[{esc(step.node)}]</span> {esc(label)}
+      {step.branch && <span className="tbranch"> ← {esc(step.branch)}</span>}
+      <br />
+      <span className="tev">↳ {esc(step.evidence)}</span>
+    </div>
+  )
+}
+
+export default function App() {
+  const d = useDiagnosis()
+  const [caseId, setCaseId] = useState('')
+  const busy = d.status === 'running' || d.status === 'paused'
+
+  useEffect(() => {
+    if (!caseId && d.cases.length) setCaseId(d.cases[0].id)
+  }, [d.cases, caseId])
+
+  return (
+    <div className="app">
+      <header>
+        <div className="brand">
+          <div className="mark">链</div>
+          <div>
+            <h1>诊疗决策链</h1>
+            <div className="sub">乳腺癌 CSCO 诊疗流水线 · 前端</div>
+          </div>
+        </div>
+        <span className={'badge' + (d.conn === 'error' ? ' err' : '')}>
+          {d.conn === 'connected' ? '已连接' : d.conn === 'error' ? '后端未连接' : '连接中…'}
+        </span>
+        <div className="controls">
+          <select value={caseId} onChange={(e) => setCaseId(e.target.value)} aria-label="选择病例">
+            {d.cases.map((c) => (
+              <option key={c.id} value={c.id}>{c.id} · {c.label}</option>
+            ))}
+          </select>
+          <button className="primary" disabled={busy || d.conn !== 'connected' || !caseId} onClick={() => d.startRun(caseId)}>
+            开始诊断
+          </button>
+          <button className="danger" disabled={!busy} onClick={d.stopRun}>停止</button>
+          <StatusBar status={d.status} />
+        </div>
+      </header>
+
+      <div className="activity">
+        <span>{d.activity}</span>
+        <span className="caret" />
+      </div>
+
+      <div className="grid">
+        <div>
+          <div className="panel">
+            <div className="panel-head">
+              <span className="eyebrow">Decision chain</span>
+              <h2>决策链 A→U</h2>
+              <span className="spacer" />
+              <div className="legend">
+                <span className="li"><span className="sw" style={{ background: 'var(--accent)' }} />已走过</span>
+                <span className="li"><span className="sw" style={{ background: 'var(--node-dim)', border: '1px solid var(--node-border)' }} />未到</span>
+                <span className="li"><span className="sw" style={{ background: 'var(--warn)' }} />当前</span>
+              </div>
+            </div>
+            <PatientStrip patient={d.patient} />
+            <DecisionChain visitedNodes={d.visitedNodes} currentNode={d.currentNode} />
+            <Stepper steps={d.steps} />
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="tabs">
+            <button className={'tab' + (d.tab === 'report' ? ' active' : '')} onClick={() => d.setTab('report')}>诊断报告</button>
+            <button className={'tab' + (d.tab === 'trace' ? ' active' : '')} onClick={() => d.setTab('trace')}>决策链追踪</button>
+          </div>
+          <div className="tab-body">
+            <div hidden={d.tab !== 'report'}>
+              {d.report.length === 0 ? (
+                <div className="empty">运行后在此流式展示诊断报告</div>
+              ) : (
+                d.report.map((sec, i) => (
+                  <div className="report-sec" key={i}>
+                    <h3>{sec.title}</h3>
+                    <div dangerouslySetInnerHTML={{ __html: sec.html }} />
+                  </div>
+                ))
+              )}
+            </div>
+            <div hidden={d.tab !== 'trace'}>
+              {d.trace.length === 0 ? (
+                <div className="empty">运行后在此追踪决策链节点</div>
+              ) : (
+                d.trace.map((step, i) => <TraceLine key={i} step={step} />)
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>产出自 CSCO 指南，属临床辅助，最终以主诊医师 / MDT 决策为准。</footer>
+
+      <ReviewModal interrupt={d.interrupt} onResume={d.resume} />
+    </div>
+  )
+}

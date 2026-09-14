@@ -57,6 +57,28 @@ python main.py REAL-006 --json
 python main.py REAL-006 -o reports/REAL-006.md
 ```
 
+## Web 前端（React + Vite）
+
+把流水线包装成可交互网页：流式决策链 A→U 点亮、红线复核 / 报告终审弹窗、随时停止。
+
+**开发**（前端热更新，`/api` 代理到 FastAPI）：
+
+```bash
+cd langgraph_diagnosis/web && npm install && npm run dev   # 终端 1，http://localhost:5173
+cd langgraph_diagnosis && .venv/bin/python server.py        # 终端 2，http://127.0.0.1:8000
+```
+
+**生产**（构建后由 FastAPI 直接托管）：
+
+```bash
+cd langgraph_diagnosis/web && npm run build
+cd .. && .venv/bin/python server.py   # http://127.0.0.1:8000
+```
+
+后端端点：`GET /api/cases`、`GET /api/stream/{tid}?case_id=`（SSE 流式）、`POST /api/resume/{tid}`、`POST /api/stop/{tid}`。
+
+> 已知边界：「停止」在节点边界生效（LLM 调用进行中会等当前节点结束）；客户端中途断连时，若正阻塞在复核等待，服务端线程会挂着（单用户可接受，多用户前需加断开检测/超时）。
+
 ## 关键设计取舍
 
 1. **确定性 vs LLM 的分工**：JSON 解析、字段抽取、TNM 线索是确定性代码（可单测）；分子分型、分期判断、红线触发、A→U 走链、报告是 LLM（`temperature=0` + 结构化输出）。
@@ -76,6 +98,8 @@ python main.py REAL-006 -o reports/REAL-006.md
 | `graph.py` | StateGraph 组装 + 条件边 + HITL |
 | `render.py` | 结构化结果 → markdown 报告 + 高亮决策链 mermaid |
 | `main.py` | CLI 入口（交互 / JSON / markdown+图 输出 / resume） |
+| `server.py` | FastAPI + SSE 后端：流式跑图、interrupt 转人工复核、serve 前端 |
+| `web/` | React + Vite 前端（决策链可视化 + 流式报告 + 复核弹窗） |
 
 ## 已知边界（相对 skill 尚未覆盖）
 

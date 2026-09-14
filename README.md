@@ -9,6 +9,8 @@
 ```text
 .
 ├── langgraph_diagnosis/   # 主流水线：LangGraph 图编排 + LlamaIndex 指南 RAG + 结构化输出 + 人机协同
+│   ├── server.py          # FastAPI + SSE 后端（流式诊断 + 人工复核）
+│   └── web/               # React + Vite 前端
 ├── Data_Cleaning/         # 数据侧：CSCO 指南 PDF → OCR → 归一化 → guide.md；病例与金标准
 │   ├── process_ocr/       # PP-StructureV3 OCR + 指南归一化（产出 guide.md）
 │   └── doc/系统输入/       # 脱敏病例 JSON（REAL-* / BC-*）+ 诊疗金标准（git 不入库）
@@ -22,7 +24,7 @@
 
 ## 主流水线：langgraph_diagnosis
 
-把 skill 里的诊疗场景重写为可批量、可评测、可生产化的 Python 流水线。skill 里 80% 的价值——领域红线与证据锚定的 prompt 规则——原样搬进 prompt，确定性抽取下沉为代码。
+把 skill 里的诊疗场景重写为可批量、可评测、可生产化的 Python 流水线。skill 里 80% 的价值——领域红线与证据锚定的 prompt 规则——原样搬进 prompt，确定性抽取下沉为代码。提供 **CLI**（`main.py`）与 **Web 前端**（`server.py` + `web/`，React + Vite）两个入口。
 
 ### 图结构
 
@@ -79,6 +81,20 @@ python main.py REAL-006 --interactive
 python main.py REAL-006 -o reports/REAL-006.md
 ```
 
+### Web 前端
+
+交互式网页：流式决策链 A→U 点亮、红线复核 / 报告终审弹窗、随时停止。
+
+```bash
+# 生产（构建后由 FastAPI 托管）
+cd langgraph_diagnosis/web && npm install && npm run build
+cd .. && .venv/bin/python server.py          # http://127.0.0.1:8000
+
+# 开发（前端热更新，/api 代理到 FastAPI）
+cd langgraph_diagnosis/web && npm run dev    # http://localhost:5173
+cd langgraph_diagnosis && .venv/bin/python server.py
+```
+
 ### 文件
 
 | 文件 | 职责 |
@@ -91,6 +107,8 @@ python main.py REAL-006 -o reports/REAL-006.md
 | `graph.py` | StateGraph 组装 + 条件边 + HITL |
 | `render.py` | 结构化结果 → markdown 报告 + 高亮决策链 mermaid |
 | `main.py` | CLI 入口（交互 / JSON / markdown+图 / resume） |
+| `server.py` | FastAPI + SSE 后端：流式跑图、interrupt 转人工复核、serve 前端 |
+| `web/` | React + Vite 前端（决策链可视化 + 流式报告 + 复核弹窗） |
 
 ## 数据侧：Data_Cleaning
 

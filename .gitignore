@@ -27,3 +27,7 @@ Data_Cleaning/doc/
 
 # 诊断报告生成物（含患者派生临床内容，不入库）
 langgraph_diagnosis/reports/
+
+# Node / Vite 前端
+langgraph_diagnosis/web/node_modules/
+langgraph_diagnosis/web/dist/

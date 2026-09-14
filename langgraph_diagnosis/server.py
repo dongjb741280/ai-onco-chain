@@ -5,7 +5,7 @@
   python server.py --port 9000
 
 端点：
-  GET  /                    前端页面（static/index.html）
+  GET  /                    前端页面（web/dist/index.html，需先 npm run build）
   GET  /api/cases           病例列表（来自 config.CASES）
   GET  /api/stream/{tid}    启动并流式跑一例（SSE，case_id 走 query）
   POST /api/resume/{tid}    恢复暂停（{"decision": "proceed"|"approve"|"stop"|"revise"}）
@@ -19,13 +19,17 @@ from pathlib import Path
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from langgraph.types import Command
 
 import config
 from graph import get_graph
 
-STATIC = Path(__file__).resolve().parent / "static"
+WEB_DIST = Path(__file__).resolve().parent / "web" / "dist"
 app = FastAPI(title="ai-onco-chain 诊疗流水线")
+
+# 托管 Vite 构建产物（index.html + /assets/*）；未构建时挂空目录，稍后构建即可
+app.mount("/assets", StaticFiles(directory=WEB_DIST / "assets", check_dir=False), name="assets")
 
 # thread_id -> 会话状态（决策回传 + 停止标志）
 _sessions: dict[str, dict] = {}
@@ -108,7 +112,7 @@ def _run_stream(thread_id: str, case_id: str, patient_path: str):
                     else:
                         yield _sse("node", {"name": name, **_serialize_node(name, update)})
         except Exception as e:  # 节点内异常（API/网络等）
-            yield _sse("error", {"message": str(e)})
+            yield _sse("run_error", {"message": str(e)})
             return
 
         if interrupted is None:
@@ -140,9 +144,9 @@ def _wait_resume(session: dict, thread_id: str) -> dict | None:
 
 @app.get("/")
 def index():
-    index_file = STATIC / "index.html"
+    index_file = WEB_DIST / "index.html"
     if not index_file.exists():
-        return {"hint": "前端未构建，见 static/index.html"}
+        return {"hint": "前端未构建，运行 cd web && npm install && npm run build"}
     return FileResponse(index_file)
 
 
