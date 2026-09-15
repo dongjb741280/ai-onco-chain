@@ -191,7 +191,15 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 
 .report-sec { margin-bottom: 18px; animation: rise .4s ease both; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.report-sec h3 { font-size: 12px; font-weight: 700; color: var(--accent-ink); text-transform: uppercase; letter-spacing: .4px; margin: 0 0 8px; font-family: var(--font-mono); }
+.report-sec h3 {
+  display: flex; align-items: center;
+  font-size: 14px; font-weight: 700; color: var(--ink);
+  margin: 0 0 12px; padding: 8px 12px;
+  background: var(--surface-2);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  letter-spacing: .2px;
+}
 .report-sec p { margin: 0 0 8px; }
 .report-sec .rpt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .report-sec .rpt-table th, .report-sec .rpt-table td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
