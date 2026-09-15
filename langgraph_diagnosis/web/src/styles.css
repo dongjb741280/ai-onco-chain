@@ -209,6 +209,8 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .report-sec li { margin-bottom: 4px; color: var(--ink-soft); }
 .cite { display: inline-block; font-size: 11px; font-family: var(--font-mono); color: var(--accent-ink); background: var(--accent-soft); border-radius: 5px; padding: 1px 6px; margin: 0 2px; cursor: pointer; transition: background .15s, color .15s; }
 .cite:hover { background: var(--accent); color: #fff; }
+.cite-record { color: var(--cat-early-text); background: var(--cat-early-fill); }
+.cite-record:hover { background: var(--cat-early-stroke); color: #fff; }
 
 .trace-line { font-family: var(--font-mono); font-size: 12.5px; padding: 6px 0; border-bottom: 1px dashed var(--line); animation: rise .3s ease both; }
 .trace-line .tnode { color: var(--accent-ink); font-weight: 600; }
@@ -236,6 +238,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .source-body { font-size: 13px; color: var(--ink-soft); max-height: 40vh; overflow-y: auto; }
 .src-h { font-size: 14px; font-weight: 700; color: var(--ink); margin: 10px 0 6px; }
 .src-p { margin: 0 0 8px; }
+.record-text { font-size: 12.5px; font-family: var(--font-mono); white-space: pre-wrap; word-break: break-word; margin: 0; color: var(--ink-soft); }
 
 footer { font-size: 12px; color: var(--muted); padding-top: 6px; }
 

@@ -73,9 +73,9 @@ class ChainPath(BaseModel):
 class DiagnosisReport(BaseModel):
     """9 节诊断报告（skill 第四步模板）。"""
     patient_info: str = Field(..., description="患者信息一行")
-    main_diagnosis: list[str] = Field(..., description="主要诊断，按主次")
-    molecular_table: str = Field(..., description="病理与分子分型依据（markdown 表格，判读理由带来源引用）")
-    tnm_staging: str = Field(..., description="TNM 分期：初始 → 当前")
+    main_diagnosis: list[str] = Field(..., description="主要诊断，按主次，带原始病历来源引用")
+    molecular_table: str = Field(..., description="病理与分子分型依据（markdown 表格，带病历与指南来源引用）")
+    tnm_staging: str = Field(..., description="TNM 分期：初始 → 当前，带原始病历来源引用")
     treatment_timeline: str = Field(..., description="诊疗经过时间轴（markdown 表格）")
     treatment_evaluation: str = Field(..., description="治疗评价对照指南（markdown 表格，带证据等级与来源引用）")
     recommendations: list[str] = Field(..., description="后续建议，每条带指南依据与来源引用（章节+页码）")

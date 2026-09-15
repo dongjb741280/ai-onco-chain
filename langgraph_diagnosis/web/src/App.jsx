@@ -84,15 +84,20 @@ export default function App() {
     if (!caseId && d.cases.length) setCaseId(d.cases[0].id)
   }, [d.cases, caseId])
 
-  // 点击引用徽章 → 弹出对应知识库原文
+  // 点击引用徽章 → 弹出对应知识库原文 / 原始病历
   function onCiteClick(e) {
     const cite = e.target.closest('.cite')
     if (!cite) return
+    const record = cite.getAttribute('data-record')
+    if (record) {
+      setSourceModal({ type: 'record', field: record, text: d.record[record] || '' })
+      return
+    }
     const page = cite.getAttribute('data-page')
     const sources = page
       ? d.guideSources.filter((s) => parseInt(s.page, 10) === parseInt(page, 10))
       : d.guideSources
-    setSourceModal({ sources: sources.length ? sources : d.guideSources })
+    setSourceModal({ type: 'guide', sources: sources.length ? sources : d.guideSources })
   }
 
   // 报告窗口默认紧凑，最高高度封顶到决策链高度
@@ -196,18 +201,31 @@ export default function App() {
       {sourceModal && (
         <div className="overlay open" onClick={(e) => { if (e.target === e.currentTarget) setSourceModal(null) }}>
           <div className="modal modal-wide">
-            <h3>指南原文</h3>
-            <p className="mdesc">引用对应的知识库片段</p>
-            <div className="source-list">
-              {sourceModal.sources.map((s, i) => (
-                <div key={i} className="source-block">
-                  <div className="source-head">
-                    {s.section || '指南'}{s.page ? ' · P' + s.page : ''}
-                  </div>
-                  <div className="source-body" dangerouslySetInnerHTML={{ __html: renderSource(s.text) }} />
+            <h3>{sourceModal.type === 'record' ? '原始病历' : '指南原文'}</h3>
+            <p className="mdesc">{sourceModal.type === 'record' ? '引用对应的病历证据' : '引用对应的知识库片段'}</p>
+            {sourceModal.type === 'record' ? (
+              <div className="source-block">
+                <div className="source-head">{sourceModal.field}</div>
+                <div className="source-body">
+                  {sourceModal.text ? (
+                    <pre className="record-text">{sourceModal.text}</pre>
+                  ) : (
+                    <p className="empty">（无内容）</p>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="source-list">
+                {sourceModal.sources.map((s, i) => (
+                  <div key={i} className="source-block">
+                    <div className="source-head">
+                      {s.section || '指南'}{s.page ? ' · P' + s.page : ''}
+                    </div>
+                    <div className="source-body" dangerouslySetInnerHTML={{ __html: renderSource(s.text) }} />
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="modal-actions">
               <button className="primary" onClick={() => setSourceModal(null)}>关闭</button>
             </div>

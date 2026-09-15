@@ -7,6 +7,7 @@ export function esc(s) {
 export function inline(s) {
   return esc(s)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[病历·([^\]]+)\]/g, (m, field) => `<span class="cite cite-record" data-record="${field}">${m}</span>`)
     .replace(/\[([^\]]*P\s*(\d+)[^\]]*)\]/g, (m, text, page) => `<span class="cite" data-page="${page}">${text}</span>`)
 }
 

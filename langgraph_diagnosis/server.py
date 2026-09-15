@@ -55,7 +55,20 @@ def _serialize_node(name: str, update: dict) -> dict:
         return {"patient": {"name": update.get("patient_name"), "case_id": update.get("case_id")}}
     if name == "extract_features":
         f = update.get("features")
-        return {"features": {"gender": f.gender, "age": f.age, "diagnoses": f.diagnoses} if f else {}}
+        if not f:
+            return {"features": {}, "record": {}}
+        return {
+            "features": {"gender": f.gender, "age": f.age, "diagnoses": f.diagnoses},
+            "record": {
+                "诊断": "、".join(f.diagnoses) if f.diagnoses else "",
+                "病理": f.pathology_text,
+                "TNM/分期": f.tnm_text,
+                "治疗": f.treatment_text,
+                "影像": f.imaging_text,
+                "检验": f.labs_text,
+                "叙事": f.narrative_text,
+            },
+        }
     if name == "retrieve_guide":
         return {"guide_sources": update.get("guide_sources", [])}
     if name == "judge_subtype":
