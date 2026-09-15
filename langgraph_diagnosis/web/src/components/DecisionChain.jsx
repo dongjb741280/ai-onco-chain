@@ -1,4 +1,4 @@
-import { EDGES, NODES, POS, edgeGeometry } from '../decisionChain'
+import { EDGES, NODES, POS, edgeGeometry, edgePath } from '../decisionChain'
 
 const VIEWBOX = '0 0 920 1400'
 const LINE_H = 14
@@ -11,13 +11,14 @@ export default function DecisionChain({ visitedNodes, currentNode }) {
       <svg viewBox={VIEWBOX} role="img" aria-label="乳腺癌诊疗决策链 A 到 U 流程图">
         <g className="edges">
           {EDGES.map((e, i) => {
-            const { p1, p2, mid } = edgeGeometry(e)
             const [from, to, label] = e
             const hit = visited.has(from) && visited.has(to)
+            const d = edgePath(from, to)
+            const mid = label ? edgeGeometry(e).mid : null
             return (
               <g key={i} className={'edge' + (hit ? ' hit' : '')}>
-                <path d={`M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`} />
-                {label && (
+                <path d={d} />
+                {label && mid && (
                   <text x={mid.x} y={mid.y - 5} textAnchor="middle">
                     {label}
                   </text>

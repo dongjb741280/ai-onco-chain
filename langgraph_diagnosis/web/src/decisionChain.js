@@ -83,3 +83,15 @@ export function edgeGeometry([fromId, toId]) {
   const p2 = clip(from, to, HW[NODE_BY_ID[toId].type], HH[NODE_BY_ID[toId].type])
   return { p1, p2, mid: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 } }
 }
+
+// 需要直角弯绕行其他节点的边：起/拐/终点坐标（S→T 绕过 R1/R2）
+const ORTHOGONAL = {
+  'S:T': [[820, 1010], [860, 1010], [860, 1240], [515, 1240]],
+}
+
+export function edgePath(fromId, toId) {
+  const pts = ORTHOGONAL[fromId + ':' + toId]
+  if (pts) return 'M ' + pts.map((p) => p[0] + ' ' + p[1]).join(' L ')
+  const { p1, p2 } = edgeGeometry([fromId, toId])
+  return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`
+}
