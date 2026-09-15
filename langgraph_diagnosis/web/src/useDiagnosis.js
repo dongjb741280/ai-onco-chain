@@ -5,6 +5,22 @@ import { PIPE_LABEL } from './constants'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+// 按第二个 D 把扁平 chain 切成 [早期段, 复发段]；单阶段只有一段（与 render.py _split_phases 一致）
+function splitPhases(chain) {
+  const phases = []
+  let cur = []
+  let dSeen = 0
+  for (const s of chain) {
+    if (s.node === 'D') {
+      dSeen += 1
+      if (dSeen === 2) { phases.push(cur); cur = [] }
+    }
+    cur.push(s)
+  }
+  phases.push(cur)
+  return phases
+}
+
 export default function useDiagnosis() {
   const [cases, setCases] = useState([])
   const [conn, setConn] = useState('connecting') // connecting | connected | error
@@ -60,10 +76,6 @@ export default function useDiagnosis() {
     setInterrupt(null)
   }, [])
 
-  const appendTrace = useCallback((step) => {
-    setTrace((prev) => [...prev, step])
-  }, [])
-
   const endRun = useCallback(() => {
     if (esRef.current) {
       esRef.current.close()
@@ -74,27 +86,38 @@ export default function useDiagnosis() {
   const animateChain = useCallback(
     async (chainPath) => {
       const token = tokenRef.current
-      const visited = {}
-      const traceByNode = {}
-      chainPath.forEach((s) => {
-        visited[s.node] = true
-        if (!traceByNode[s.node]) traceByNode[s.node] = s
-      })
+      const phases = splitPhases(chainPath)
+
+      // 当前阶段（最后一段）桥接 T：终点 U 前必经 T，若 LLM 省略则补空证据
+      const cur = phases[phases.length - 1]
+      const uIdx = cur.findIndex((s) => s.node === 'U')
+      if (uIdx >= 0 && !cur.some((s) => s.node === 'T')) {
+        cur.splice(uIdx, 0, { node: 'T', branch: null, evidence: '' })
+      }
+
+      // 决策链只高亮「当前阶段」+ A/B/C 前缀（与 render.py _current_phase_nodes 一致）
+      const highlight = new Set(cur.map((s) => s.node))
+      highlight.add('A'); highlight.add('B'); highlight.add('C')
+
       setTab('trace')
+      // 追踪面板与决策链一致：只显示当前阶段（A/B/C 前缀 + 当前段）
+      const abc = phases.length > 1 ? phases[0].filter((s) => ['A', 'B', 'C'].includes(s.node)) : []
+      setTrace([...abc, ...cur])
+
+      // 动画点亮当前阶段节点
       for (const id of ORDER) {
-        if (!visited[id] || visitedRef.current.has(id)) continue
+        if (!highlight.has(id) || visitedRef.current.has(id)) continue
         setCurrentNode(id)
         await sleep(300)
         if (token !== tokenRef.current) return
         addVisited(id)
         setCurrentNode(null)
-        if (traceByNode[id]) appendTrace(traceByNode[id])
         await sleep(160)
         if (token !== tokenRef.current) return
       }
       setTab('report')
     },
-    [addVisited, appendTrace],
+    [addVisited],
   )
 
   const animateReport = useCallback(async (sections) => {
