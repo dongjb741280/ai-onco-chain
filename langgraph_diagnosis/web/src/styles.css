@@ -13,6 +13,7 @@
   --accent-soft: #e0eef0;
 
   --success: #2f9e6e;
+  --success-soft: #e2f3ea; --success-ink: #1f7a52;
   --warn: #c05621;
   --warn-soft: #fbeadd;
   --danger: #c0392b;
@@ -42,6 +43,7 @@
     --line: #263139; --line-strong: #35434d;
     --accent: #35b6c2; --accent-ink: #7fd6dd; --accent-soft: #123338;
     --success: #46c48d; --warn: #e0954e; --warn-soft: #33271a;
+    --success-soft: #123023; --success-ink: #6ee7a8;
     --danger: #e06a5c; --danger-soft: #34201d;
     --node-bg: #1a2229; --node-border: #35434d; --node-dim: #20292f; --edge: #35434d;
     --cat-start-fill: #134e4a; --cat-start-stroke: #2dd4bf; --cat-start-text: #ecfeff;
@@ -98,14 +100,25 @@ button.danger { background: var(--danger); border-color: var(--danger); color: #
 button.danger:hover { filter: brightness(1.06); }
 button:disabled { opacity: .45; cursor: not-allowed; }
 
-.status { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 9px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; font-weight: 600; color: var(--ink-soft); min-width: 120px; }
-.status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-.status.running .dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
-.status.paused .dot { background: var(--warn); animation: pulse 1s ease-in-out infinite; }
-.status.done .dot { background: var(--success); }
-.status.stopped .dot { background: var(--danger); }
-.status.revised .dot { background: var(--warn); }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+.status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: var(--surface); border: 1.5px solid transparent; font-size: 13px; font-weight: 700; color: var(--ink-soft); min-width: 128px; justify-content: center; transition: background .3s, color .3s, border-color .3s, box-shadow .3s; }
+.status .ico { font-size: 14px; line-height: 1; }
+.status .spinner { width: 13px; height: 13px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; animation: spin .7s linear infinite; }
+
+.status.idle { background: var(--surface-2); color: var(--muted); border-color: var(--line); }
+
+.status.running { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent); }
+
+.status.paused { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); animation: glow 1.4s ease-in-out infinite; }
+.status.paused .ico { animation: pulse 1s ease-in-out infinite; }
+
+.status.done { background: var(--success-soft); color: var(--success-ink); border-color: var(--success); }
+.status.stopped { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+.status.revised { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+.status.error { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 4px 0 var(--warn); } 50% { box-shadow: 0 0 14px 3px var(--warn); } }
 
 .activity { font-family: var(--font-mono); font-size: 12px; color: var(--muted); padding: 8px 12px; border-radius: 8px; background: var(--surface-2); min-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .activity .caret { display: inline-block; width: 7px; height: 13px; background: var(--accent); vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(1) infinite; }

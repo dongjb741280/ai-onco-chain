@@ -6,21 +6,22 @@ import { PIPE } from './constants'
 import { NODE_BY_ID } from './decisionChain'
 import { esc } from './render'
 
-const STATUS_TEXT = {
-  idle: '空闲',
-  running: '运行中',
-  paused: '等待复核',
-  done: '完成',
-  stopped: '已停止',
-  revised: '待修改',
-  error: '出错',
+const STATUS_META = {
+  idle: { label: '空闲', icon: '○' },
+  running: { label: '运行中', icon: null },
+  paused: { label: '等待复核', icon: '⚠' },
+  done: { label: '完成', icon: '✓' },
+  stopped: { label: '已停止', icon: '■' },
+  revised: { label: '待修改', icon: '↺' },
+  error: { label: '出错', icon: '✕' },
 }
 
 function StatusBar({ status }) {
+  const meta = STATUS_META[status] || STATUS_META.idle
   return (
-    <div className={'status' + (status ? ' ' + status : '')}>
-      <span className="dot" />
-      <span>{STATUS_TEXT[status] || '空闲'}</span>
+    <div className={'status ' + status}>
+      {status === 'running' ? <span className="spinner" /> : <span className="ico">{meta.icon}</span>}
+      <span>{meta.label}</span>
     </div>
   )
 }
