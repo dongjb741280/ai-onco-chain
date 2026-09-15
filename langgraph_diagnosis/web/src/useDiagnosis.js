@@ -32,6 +32,7 @@ export default function useDiagnosis() {
   const [currentNode, setCurrentNode] = useState(null)
   const [report, setReport] = useState([])
   const [trace, setTrace] = useState([])
+  const [guideSources, setGuideSources] = useState([])
   const [interrupt, setInterrupt] = useState(null)
   const [tab, setTab] = useState('report')
 
@@ -73,6 +74,7 @@ export default function useDiagnosis() {
     setSteps({})
     setReport([])
     setTrace([])
+    setGuideSources([])
     setInterrupt(null)
   }, [])
 
@@ -143,6 +145,7 @@ export default function useDiagnosis() {
       if (d.features) {
         setPatient((prev) => ({ ...prev, gender: d.features.gender, age: d.features.age, diagnoses: d.features.diagnoses }))
       }
+      if (d.guide_sources) setGuideSources(d.guide_sources)
       if (d.subtype) {
         setPatient((prev) => ({ ...prev, subtype: d.subtype.subtype }))
         addVisited('A'); addVisited('B'); addVisited('C')
@@ -223,7 +226,7 @@ export default function useDiagnosis() {
 
   return {
     cases, conn, status, activity, patient, steps, visitedNodes, currentNode,
-    report, trace, interrupt, tab, setTab,
+    report, trace, guideSources, interrupt, tab, setTab,
     startRun, stopRun, resume,
   }
 }

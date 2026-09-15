@@ -57,7 +57,7 @@ def _serialize_node(name: str, update: dict) -> dict:
         f = update.get("features")
         return {"features": {"gender": f.gender, "age": f.age, "diagnoses": f.diagnoses} if f else {}}
     if name == "retrieve_guide":
-        return {"guide": {"sections": len(update.get("guide_sections", []))}}
+        return {"guide_sources": update.get("guide_sources", [])}
     if name == "judge_subtype":
         s = update.get("subtype")
         return {"subtype": s.model_dump() if s else None}

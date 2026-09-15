@@ -4,7 +4,7 @@ import DecisionChain from './components/DecisionChain'
 import ReviewModal from './components/ReviewModal'
 import { PIPE } from './constants'
 import { NODE_BY_ID } from './decisionChain'
-import { esc } from './render'
+import { esc, renderSource } from './render'
 
 const STATUS_META = {
   idle: { label: '空闲', icon: '○' },
@@ -75,6 +75,7 @@ function TraceLine({ step }) {
 export default function App() {
   const d = useDiagnosis()
   const [caseId, setCaseId] = useState('')
+  const [sourceModal, setSourceModal] = useState(null)
   const busy = d.status === 'running' || d.status === 'paused'
   const leftRef = useRef(null)
   const rightRef = useRef(null)
@@ -82,6 +83,17 @@ export default function App() {
   useEffect(() => {
     if (!caseId && d.cases.length) setCaseId(d.cases[0].id)
   }, [d.cases, caseId])
+
+  // 点击引用徽章 → 弹出对应知识库原文
+  function onCiteClick(e) {
+    const cite = e.target.closest('.cite')
+    if (!cite) return
+    const page = cite.getAttribute('data-page')
+    const sources = page
+      ? d.guideSources.filter((s) => parseInt(s.page, 10) === parseInt(page, 10))
+      : d.guideSources
+    setSourceModal({ sources: sources.length ? sources : d.guideSources })
+  }
 
   // 报告窗口默认紧凑，最高高度封顶到决策链高度
   useEffect(() => {
@@ -154,7 +166,7 @@ export default function App() {
             <button className={'tab' + (d.tab === 'trace' ? ' active' : '')} onClick={() => d.setTab('trace')}>决策链追踪</button>
           </div>
           <div className="tab-body">
-            <div hidden={d.tab !== 'report'}>
+            <div hidden={d.tab !== 'report'} onClick={onCiteClick}>
               {d.report.length === 0 ? (
                 <div className="empty">运行后在此流式展示诊断报告</div>
               ) : (
@@ -180,6 +192,28 @@ export default function App() {
       <footer>产出自 CSCO 指南，属临床辅助，最终以主诊医师 / MDT 决策为准。</footer>
 
       <ReviewModal interrupt={d.interrupt} onResume={d.resume} />
+
+      {sourceModal && (
+        <div className="overlay open" onClick={(e) => { if (e.target === e.currentTarget) setSourceModal(null) }}>
+          <div className="modal modal-wide">
+            <h3>指南原文</h3>
+            <p className="mdesc">引用对应的知识库片段</p>
+            <div className="source-list">
+              {sourceModal.sources.map((s, i) => (
+                <div key={i} className="source-block">
+                  <div className="source-head">
+                    {s.section || '指南'}{s.page ? ' · P' + s.page : ''}
+                  </div>
+                  <div className="source-body" dangerouslySetInnerHTML={{ __html: renderSource(s.text) }} />
+                </div>
+              ))}
+            </div>
+            <div className="modal-actions">
+              <button className="primary" onClick={() => setSourceModal(null)}>关闭</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

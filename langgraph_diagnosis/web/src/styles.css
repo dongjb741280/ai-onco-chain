@@ -201,13 +201,14 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   letter-spacing: .2px;
 }
 .report-sec p { margin: 0 0 8px; }
-.report-sec .rpt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.report-sec .rpt-table th, .report-sec .rpt-table td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
-.report-sec .rpt-table th { color: var(--muted); font-weight: 600; font-size: 12px; background: var(--surface-2); }
-.report-sec .rpt-table td { color: var(--ink-soft); }
+.rpt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rpt-table th, .rpt-table td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.rpt-table th { color: var(--muted); font-weight: 600; font-size: 12px; background: var(--surface-2); }
+.rpt-table td { color: var(--ink-soft); }
 .report-sec ul { margin: 0; padding-left: 18px; }
 .report-sec li { margin-bottom: 4px; color: var(--ink-soft); }
-.cite { display: inline-block; font-size: 11px; font-family: var(--font-mono); color: var(--accent-ink); background: var(--accent-soft); border-radius: 5px; padding: 1px 6px; margin: 0 2px; }
+.cite { display: inline-block; font-size: 11px; font-family: var(--font-mono); color: var(--accent-ink); background: var(--accent-soft); border-radius: 5px; padding: 1px 6px; margin: 0 2px; cursor: pointer; transition: background .15s, color .15s; }
+.cite:hover { background: var(--accent); color: #fff; }
 
 .trace-line { font-family: var(--font-mono); font-size: 12.5px; padding: 6px 0; border-bottom: 1px dashed var(--line); animation: rise .3s ease both; }
 .trace-line .tnode { color: var(--accent-ink); font-weight: 600; }
@@ -227,6 +228,14 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .redline-item .ra { font-size: 12px; color: var(--warn); margin-top: 4px; }
 .modal-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
 .modal-actions button { flex: 1; min-width: 96px; }
+
+.modal-wide { max-width: 720px; max-height: 82vh; display: flex; flex-direction: column; }
+.source-list { overflow-y: auto; margin: 4px 0 12px; }
+.source-block { border: 1px solid var(--line); border-radius: 9px; padding: 12px; margin-bottom: 10px; background: var(--surface-2); }
+.source-head { font-size: 13px; font-weight: 700; color: var(--accent-ink); margin-bottom: 8px; }
+.source-body { font-size: 13px; color: var(--ink-soft); max-height: 40vh; overflow-y: auto; }
+.src-h { font-size: 14px; font-weight: 700; color: var(--ink); margin: 10px 0 6px; }
+.src-p { margin: 0 0 8px; }
 
 footer { font-size: 12px; color: var(--muted); padding-top: 6px; }
 

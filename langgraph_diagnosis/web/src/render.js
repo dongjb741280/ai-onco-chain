@@ -7,7 +7,32 @@ export function esc(s) {
 export function inline(s) {
   return esc(s)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\[([^\]]*P\d+[^\]]*)\]/g, '<span class="cite">$1</span>')
+    .replace(/\[([^\]]*P\s*(\d+)[^\]]*)\]/g, (m, text, page) => `<span class="cite" data-page="${page}">${text}</span>`)
+}
+
+// 指南原文的轻量 markdown 渲染（去 HTML 注释，支持标题/表格/段落）
+export function renderSource(text) {
+  const clean = String(text || '').replace(/<!--[\s\S]*?-->/g, '')
+  const lines = clean.split('\n')
+  let html = ''
+  let i = 0
+  while (i < lines.length) {
+    const t = lines[i].trim()
+    if (!t) { i++; continue }
+    if (t.startsWith('|')) {
+      const block = []
+      while (i < lines.length && lines[i].trim().startsWith('|')) { block.push(lines[i]); i++ }
+      html += mdTable(block.join('\n'))
+    } else if (/^#{1,3}\s/.test(t)) {
+      const m = t.match(/^(#{1,3})\s+(.*)$/)
+      html += `<h${m[1].length} class="src-h">${inline(m[2])}</h${m[1].length}>`
+      i++
+    } else {
+      html += `<p class="src-p">${inline(t)}</p>`
+      i++
+    }
+  }
+  return html || '<p class="empty">（无内容）</p>'
 }
 
 export function mdTable(text) {
