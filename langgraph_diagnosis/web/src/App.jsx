@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useDiagnosis from './useDiagnosis'
 import DecisionChain from './components/DecisionChain'
 import ReviewModal from './components/ReviewModal'
@@ -59,7 +59,8 @@ function Stepper({ steps }) {
 }
 
 function TraceLine({ step }) {
-  const label = (NODE_BY_ID[step.node] || {}).label || step.node
+  const node = NODE_BY_ID[step.node] || {}
+  const label = Array.isArray(node.label) ? node.label[0] : node.label || step.node
   return (
     <div className="trace-line">
       <span className="tnode">[{esc(step.node)}]</span> {esc(label)}
@@ -74,10 +75,24 @@ export default function App() {
   const d = useDiagnosis()
   const [caseId, setCaseId] = useState('')
   const busy = d.status === 'running' || d.status === 'paused'
+  const leftRef = useRef(null)
+  const rightRef = useRef(null)
 
   useEffect(() => {
     if (!caseId && d.cases.length) setCaseId(d.cases[0].id)
   }, [d.cases, caseId])
+
+  // 报告窗口默认紧凑，最高高度封顶到决策链高度
+  useEffect(() => {
+    const left = leftRef.current
+    const right = rightRef.current
+    if (!left || !right) return
+    const sync = () => { right.style.maxHeight = left.offsetHeight + 'px' }
+    sync()
+    const ro = new ResizeObserver(sync)
+    ro.observe(left)
+    return () => ro.disconnect()
+  }, [])
 
   return (
     <div className="app">
@@ -113,15 +128,17 @@ export default function App() {
 
       <div className="grid">
         <div>
-          <div className="panel">
+          <div className="panel" ref={leftRef}>
             <div className="panel-head">
               <span className="eyebrow">Decision chain</span>
               <h2>决策链 A→U</h2>
               <span className="spacer" />
               <div className="legend">
-                <span className="li"><span className="sw" style={{ background: 'var(--accent)' }} />已走过</span>
-                <span className="li"><span className="sw" style={{ background: 'var(--node-dim)', border: '1px solid var(--node-border)' }} />未到</span>
-                <span className="li"><span className="sw" style={{ background: 'var(--warn)' }} />当前</span>
+                <span className="li"><span className="sw" style={{ background: 'var(--cat-start-fill)' }} />起点</span>
+                <span className="li"><span className="sw" style={{ background: 'var(--cat-decision-fill)' }} />决策</span>
+                <span className="li"><span className="sw" style={{ background: 'var(--cat-early-fill)' }} />早期</span>
+                <span className="li"><span className="sw" style={{ background: 'var(--cat-advanced-fill)' }} />晚期</span>
+                <span className="li"><span className="sw" style={{ background: 'var(--cat-support-fill)' }} />支持</span>
               </div>
             </div>
             <PatientStrip patient={d.patient} />
@@ -130,7 +147,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="panel">
+        <div className="panel" ref={rightRef}>
           <div className="tabs">
             <button className={'tab' + (d.tab === 'report' ? ' active' : '')} onClick={() => d.setTab('report')}>诊断报告</button>
             <button className={'tab' + (d.tab === 'trace' ? ' active' : '')} onClick={() => d.setTab('trace')}>决策链追踪</button>

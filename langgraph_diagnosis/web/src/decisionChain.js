@@ -1,43 +1,49 @@
-// 决策链 A→U 的静态拓扑：节点、坐标、边（与 render.py 的 NODE_LABELS / _EDGES 对应）
+// 决策链 A→U 静态拓扑：节点、坐标、边
+//
+// 节点类别（cat）与参考图 breast-cancer-treatment-decision-chain 一致：
+//   start(A) / decision(D,E,I,P,R) / early(F,G,H,J,K,L) / advanced(M,N,O,Q,R1,R2,S) / support(T,U)
+//   default(B,C) 中性
+//
+// 布局：横向适配 panel 宽度（无横向滚动），竖向可延展。
 
 export const NODES = [
-  { id: 'A', label: '初诊乳腺癌', type: 'rect' },
-  { id: 'B', label: '影像·病理·分子', type: 'rect' },
-  { id: 'C', label: '分期与分子分型', type: 'rect' },
-  { id: 'D', label: 'M 分期', type: 'diamond' },
-  { id: 'E', label: '是否新辅助', type: 'diamond' },
-  { id: 'F', label: '新辅助方案', type: 'rect' },
-  { id: 'G', label: '直接手术', type: 'rect' },
-  { id: 'H', label: '手术·病理反应', type: 'rect' },
-  { id: 'I', label: 'pCR / 残余', type: 'diamond' },
-  { id: 'J', label: '术后辅助', type: 'rect' },
-  { id: 'K', label: '强化辅助', type: 'rect' },
-  { id: 'L', label: '放疗·内分泌·抗HER2', type: 'rect' },
-  { id: 'M', label: '转移灶再活检', type: 'rect' },
-  { id: 'N', label: '评估既往治疗', type: 'rect' },
-  { id: 'O', label: '序贯全身治疗', type: 'rect' },
-  { id: 'P', label: '特殊转移部位', type: 'diamond' },
-  { id: 'Q', label: '骨改良药', type: 'rect' },
-  { id: 'R', label: '脑转移', type: 'diamond' },
-  { id: 'R1', label: '脑实质', type: 'rect' },
-  { id: 'R2', label: '脑膜', type: 'rect' },
-  { id: 'S', label: '系统治疗', type: 'rect' },
-  { id: 'T', label: '疗效评估·MDT', type: 'rect' },
-  { id: 'U', label: '长期随访', type: 'rect' },
+  { id: 'A', cat: 'start', type: 'rect', label: ['初诊乳腺癌'] },
+  { id: 'B', cat: 'default', type: 'rect', label: ['影像·病理·分子标志物'] },
+  { id: 'C', cat: 'default', type: 'rect', label: ['TNM分期·分子分型'] },
+  { id: 'D', cat: 'decision', type: 'diamond', label: ['M分期：远处转移?'] },
+  { id: 'E', cat: 'decision', type: 'diamond', label: ['适合新辅助?'] },
+  { id: 'F', cat: 'early', type: 'rect', label: ['按亚型选新辅助', 'HER2+双靶/三阴/HR+'] },
+  { id: 'G', cat: 'early', type: 'rect', label: ['直接手术', '腋窝评估'] },
+  { id: 'H', cat: 'early', type: 'rect', label: ['手术·病理反应'] },
+  { id: 'I', cat: 'decision', type: 'diamond', label: ['pCR / 残余?'] },
+  { id: 'J', cat: 'early', type: 'rect', label: ['按风险术后辅助'] },
+  { id: 'K', cat: 'early', type: 'rect', label: ['强化辅助', 'T-DM1 / T-DXd'] },
+  { id: 'L', cat: 'early', type: 'rect', label: ['放疗·内分泌·抗HER2'] },
+  { id: 'M', cat: 'advanced', type: 'rect', label: ['转移灶再活检·再分型'] },
+  { id: 'N', cat: 'advanced', type: 'rect', label: ['评估既往治疗·治疗线'] },
+  { id: 'O', cat: 'advanced', type: 'rect', label: ['按亚型序贯全身治疗'] },
+  { id: 'P', cat: 'decision', type: 'diamond', label: ['特殊转移部位?'] },
+  { id: 'Q', cat: 'advanced', type: 'rect', label: ['骨改良药 + 局部治疗'] },
+  { id: 'R', cat: 'decision', type: 'diamond', label: ['脑转移：实质/脑膜?'] },
+  { id: 'R1', cat: 'advanced', type: 'rect', label: ['脑实质：SRS/FSRT'] },
+  { id: 'R2', cat: 'advanced', type: 'rect', label: ['脑膜：全中枢/鞘内'] },
+  { id: 'S', cat: 'advanced', type: 'rect', label: ['继续系统治疗'] },
+  { id: 'T', cat: 'support', type: 'rect', label: ['疗效评估·毒性·MDT'] },
+  { id: 'U', cat: 'support', type: 'rect', label: ['长期随访·复发监测'] },
 ]
 
 export const POS = {
-  A: [600, 36], B: [600, 128], C: [600, 220], D: [600, 316],
-  E: [330, 416], F: [170, 520], G: [470, 520], H: [170, 616],
-  I: [170, 712], J: [90, 816], K: [250, 816], L: [330, 916],
-  M: [850, 416], N: [850, 512], O: [850, 608], P: [850, 708],
-  Q: [680, 816], R: [850, 816], S: [1020, 816], R1: [780, 916], R2: [950, 916],
-  T: [600, 1040], U: [600, 1136],
+  A: [440, 40], B: [440, 150], C: [440, 260], D: [440, 380],
+  E: [250, 500], F: [90, 620], G: [250, 620], H: [90, 740],
+  I: [90, 860], J: [250, 980], K: [90, 980], L: [170, 1100],
+  M: [660, 500], N: [660, 620], O: [660, 740], P: [660, 860],
+  Q: [500, 980], R: [660, 980], S: [820, 980], R1: [600, 1100], R2: [760, 1100],
+  T: [440, 1240], U: [440, 1360],
 }
 
 export const EDGES = [
   ['A', 'B', ''], ['B', 'C', ''], ['C', 'D', ''],
-  ['D', 'E', '否：M0 早期'], ['D', 'M', '是：M1 复发/转移'],
+  ['D', 'E', '否：M0'], ['D', 'M', '是：M1'],
   ['E', 'F', '是'], ['E', 'G', '否'],
   ['F', 'H', ''], ['H', 'I', ''], ['G', 'J', ''],
   ['I', 'J', 'pCR'], ['I', 'K', 'non-pCR'],
@@ -54,8 +60,8 @@ export const ORDER = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'
 
 export const NODE_BY_ID = Object.fromEntries(NODES.map((n) => [n.id, n]))
 
-const HW = { rect: 75, diamond: 78 }
-const HH = { rect: 23, diamond: 30 }
+const HW = { rect: 75, diamond: 86 }
+const HH = { rect: 30, diamond: 42 }
 
 // 从 from 指向 to 的射线，在 to 节点的边界（近似矩形）处截断
 export function clip(from, to, hw, hh) {
