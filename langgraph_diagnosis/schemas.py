@@ -77,8 +77,8 @@ class DiagnosisReport(BaseModel):
     molecular_table: str = Field(..., description="病理与分子分型依据（markdown 表格）")
     tnm_staging: str = Field(..., description="TNM 分期：初始 → 当前")
     treatment_timeline: str = Field(..., description="诊疗经过时间轴（markdown 表格）")
-    treatment_evaluation: str = Field(..., description="治疗评价对照指南（markdown 表格，带证据等级）")
-    recommendations: list[str] = Field(..., description="后续建议，每条尽量带指南依据")
+    treatment_evaluation: str = Field(..., description="治疗评价对照指南（markdown 表格，带证据等级与来源引用）")
+    recommendations: list[str] = Field(..., description="后续建议，每条带指南依据与来源引用（章节+页码）")
     blockers: list[str] = Field(..., description="卡点/待核实")
     disclaimer: str = Field("依据病历与 CSCO 指南整理，属临床辅助，最终以主诊医师/MDT 决策为准。")
 
@@ -107,6 +107,7 @@ class DiagnosisState(TypedDict, total=False):
     patient_data: dict[str, Any]
     features: PatientFeatures
     guide_sections: list[str]
+    guide_sources: list[dict[str, Any]]
     subtype: MolecularSubtype
     staging: Staging
     red_lines: list[RedLineFlag]

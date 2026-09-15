@@ -67,6 +67,21 @@ def _guide_block(sections: list[str]) -> str:
     return "\n\n---\n\n".join(sections) if sections else "（指南未检索到）"
 
 
+def _guide_block_with_sources(sources: list[dict]) -> str:
+    """把检索到的指南片段连同来源（章节+页码）拼给报告节点，供引用。"""
+    if not sources:
+        return "（指南未检索到）"
+    parts = []
+    for i, s in enumerate(sources, 1):
+        src = f"【来源{i}】"
+        if s.get("section"):
+            src += f" {s['section']}"
+        if s.get("page"):
+            src += f" · P{s['page']}"
+        parts.append(f"{src}\n{s['text']}")
+    return "\n\n---\n\n".join(parts)
+
+
 # ---------- 确定性节点 ----------
 
 def load_patient_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -90,8 +105,11 @@ def retrieve_guide_node(state: dict[str, Any]) -> dict[str, Any]:
     if _RETRIEVER is None:
         _RETRIEVER = GuideRetriever()
     q = build_query(state["features"])
-    sections = _RETRIEVER.retrieve(q)
-    return {"guide_sections": sections}
+    results = _RETRIEVER.retrieve_with_sources(q)
+    return {
+        "guide_sections": [r["text"] for r in results],
+        "guide_sources": results,
+    }
 
 
 _RETRIEVER = None  # 模块级缓存（避免重复建索引）
@@ -238,7 +256,10 @@ def write_report_node(state: dict[str, Any]) -> dict[str, Any]:
     chain_txt = "\n".join(f"[{s.node}] {s.branch or ''} → {s.evidence}" for s in chain)
     system = """你是乳腺肿瘤科医生助手，产出一份 9 节综合诊断报告（结构化字段）。
 
-要求：推荐等级写 Ⅰ/Ⅱ/Ⅲ 级，证据类别写 1A/1B/2A/2B/3；治疗评价用 ✓/△/⚠；不替未记录环节脑补。"""
+要求：
+- 推荐等级写 Ⅰ/Ⅱ/Ⅲ 级，证据类别写 1A/1B/2A/2B/3；治疗评价用 ✓/△/⚠
+- 「治疗评价」与「后续建议」的每一条，都要标注知识库来源，格式如「[第二章 术前新辅助治疗 · P45]」，来源取自【指南片段】里的【来源N】标注（章节+页码）
+- 不替未记录环节脑补"""
     human = f"""【已判结果】
 分型={subtype.subtype if subtype else '未判'}；M={staging.m_status if staging else '未判'}
 决策链：\n{chain_txt}
@@ -247,7 +268,7 @@ def write_report_node(state: dict[str, Any]) -> dict[str, Any]:
 {_features_block(f)}
 
 【指南片段】
-{_guide_block(state.get("guide_sections", []))}"""
+{_guide_block_with_sources(state.get("guide_sources", []))}"""
     return {"report": _ask(DiagnosisReport, system, human)}
 
 

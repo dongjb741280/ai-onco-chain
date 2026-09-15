@@ -5,7 +5,9 @@ export function esc(s) {
 }
 
 export function inline(s) {
-  return esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  return esc(s)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[([^\]]*P\d+[^\]]*)\]/g, '<span class="cite">$1</span>')
 }
 
 export function mdTable(text) {

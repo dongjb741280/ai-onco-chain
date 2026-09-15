@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from llama_index.core import Settings, VectorStoreIndex
@@ -20,6 +21,20 @@ def _build_nodes(guide_path: Path) -> list:
     text = guide_path.read_text(encoding="utf-8")
     parser = MarkdownNodeParser()
     return parser.get_nodes_from_documents([Document(text=text)])
+
+
+def _extract_page(text: str) -> str | None:
+    m = re.search(r"Page\s+(\d+)", text)
+    return m.group(1) if m else None
+
+
+def _extract_section(meta: dict, text: str) -> str | None:
+    """取指南章节：优先 header_path 的顶层章节，退化到正文首个 # 标题。"""
+    parts = [p for p in (meta.get("header_path") or "/").split("/") if p.strip()]
+    if parts:
+        return parts[0]
+    m = re.search(r"^#\s+(.+)", text, re.MULTILINE)
+    return m.group(1).strip() if m else None
 
 
 class GuideRetriever:
@@ -72,6 +87,18 @@ class GuideRetriever:
         """返回 top-k 指南片段文本，供判断节点使用。"""
         nodes = self._retriever.retrieve(query)
         return [n.get_content() for n in nodes]
+
+    def retrieve_with_sources(self, query: str) -> list[dict]:
+        """返回 top-k 片段及其来源（章节 + 页码），供报告引用。"""
+        out = []
+        for n in self._retriever.retrieve(query):
+            text = n.get_content()
+            out.append({
+                "text": text,
+                "section": _extract_section(n.metadata, text),
+                "page": _extract_page(text),
+            })
+        return out
 
 
 def build_query(features) -> str:
