@@ -61,6 +61,12 @@ python main.py REAL-006 -o reports/REAL-006.md
 
 把流水线包装成可交互网页：流式决策链 A→U 点亮、红线复核 / 报告终审弹窗、随时停止。
 
+- **决策链可视化**：A→U 全图按类别配色（起点 / 决策 / 早期 / 晚期 / 支持），只高亮当前阶段路径、未走过灰显。
+- **流式反馈**：节点逐个点亮、追踪逐行追加、报告分节浮现，顶部实时状态胶囊（运行转圈 / 等待复核发光）。
+- **引用与溯源**：报告中的引用分两类、均可点击回看原文——
+  - 指南引用（青色徽章 `[章节 · P页码]`）→ 打开对应指南片段
+  - 病历引用（蓝色徽章 `[病历·字段]`）→ 打开原始病历证据
+
 **开发**（前端热更新，`/api` 代理到 FastAPI）：
 
 ```bash
@@ -85,6 +91,7 @@ cd .. && .venv/bin/python server.py   # http://127.0.0.1:8000
 2. **RAG 降级**：没配 embedding key 时，`GuideRetriever` 自动退回 `BM25Retriever`（关键词，无需 embedding），保证可立即跑通；配了 `OPENAI_API_KEY` 则用 `VectorStoreIndex` 语义检索。
 3. **成本控制**：不把 270KB 指南全塞进 prompt，只喂检索到的 top-k 章节；也不把 880KB JSON 全塞，只喂 `extract_features` 抽出的证据文本。
 4. **评测入口**：`--json` 输出与 `Data_Cleaning/doc/系统输入/7例真实病例-患者基本情况与诊疗金标准.md` 可直接做字段级对照。
+5. **可溯源的引用**：检索指南时携带章节+页码；报告里的指南证据（治疗评价/后续建议/分子分型）与病历证据（主要诊断/分期）都标注来源，前端可点击回看原文。
 
 ## 文件
 
@@ -93,7 +100,7 @@ cd .. && .venv/bin/python server.py   # http://127.0.0.1:8000
 | `config.py` | 路径、病例映射、模型/检索配置（环境变量覆盖） |
 | `schemas.py` | Pydantic：结构化输出模型 + 图状态 |
 | `extractor.py` | 确定性字段抽取（字段映射） |
-| `guide_rag.py` | LlamaIndex 指南检索（向量/BM25 降级） |
+| `guide_rag.py` | LlamaIndex 指南检索（向量/BM25 降级，附章节+页码来源） |
 | `nodes.py` | 图节点：确定性节点 + LLM 判断节点 + interrupt 节点 |
 | `graph.py` | StateGraph 组装 + 条件边 + HITL |
 | `render.py` | 结构化结果 → markdown 报告 + 高亮决策链 mermaid |
