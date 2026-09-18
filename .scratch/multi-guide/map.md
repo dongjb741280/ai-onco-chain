@@ -20,6 +20,7 @@ spec 见 `spec.md`：把 `langgraph_diagnosis` 从单指南（CSCO）硬编码�
 - [指南层可插拔实现](issues/01-pluggable-guide-retrieval.md)：config 多指南 + GuideRetriever 多索引 + 引用带指南名，CACA 进线（REAL-006 报告已见 CSCO×4 / CACA×12 引用）。
 - [跨指南对比小节](issues/02-cross-guide-comparison.md)：`compare_guides_node` 逐决策点并列 CSCO/CACA 立场，冲突标「⚠ 冲突」；观察=检索式对比受限于 top-6 对齐，确定性冲突检测待 issue 03。
 - [结构化决策层](issues/03-structured-decision-layer.md)：`structured_decisions.py`——CSCO 决策表确定性解析（224 条）+ CACA 叙述 LLM 抽取（150 条）+ 规范等级归一化 + `diff` 确定性冲突检测；局限=方案名精确匹配 + 人群标签不统一。
+- [冲突裁决策略](issues/04-conflict-adjudication-strategy.md)：`CONFLICT_STRATEGY`（human/china-first/latest-first）+ `resolve_conflicts`；当前两指南同为 china/2026，区分待境外指南/新版本。
 
 ## Not yet specified
 

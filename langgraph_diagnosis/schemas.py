@@ -118,6 +118,7 @@ class GuidelineConflict(BaseModel):
     description: str = Field(..., description="冲突描述")
     csco_regimens: list[str] = Field(default_factory=list)
     caca_regimens: list[str] = Field(default_factory=list)
+    resolution: str | None = Field(None, description="裁决结果：人工裁决 / 采用 <指南>")
 
 
 class RecommendationDecisionList(BaseModel):

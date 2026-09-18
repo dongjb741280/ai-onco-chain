@@ -188,6 +188,38 @@ def diff(records: list[RecommendationDecision]) -> list[GuidelineConflict]:
     return conflicts
 
 
+def resolve_conflicts(
+    conflicts: list[GuidelineConflict],
+    profiles: list | None = None,
+    strategy: str | None = None,
+) -> list[GuidelineConflict]:
+    """按策略给每条冲突填裁决：human=人工裁决；china-first=中国指南优先；latest-first=最新优先。
+
+    同优先级（当前 CSCO/CACA 同为 china/2026）按 profiles 顺序 tie-break。
+    """
+    profiles = profiles or config.GUIDE_PROFILES
+    strategy = strategy or config.CONFLICT_STRATEGY
+    order = [p.name for p in profiles]
+    prof = {p.name: p for p in profiles}
+
+    def pick(names: list[str]) -> str | None:
+        return min(names, key=lambda g: order.index(g)) if names else None
+
+    for c in conflicts:
+        guides = [g for g in ("CSCO", "CACA")
+                  if (c.csco_regimens if g == "CSCO" else c.caca_regimens)]
+        if strategy == "china-first":
+            china = [g for g in guides if prof[g].region == "china"]
+            winner = pick(china or guides)
+        elif strategy == "latest-first":
+            newest = max((prof[g].year for g in guides), default=None)
+            winner = pick([g for g in guides if prof[g].year == newest])
+        else:
+            winner = None
+        c.resolution = f"采用 {winner}" if winner else "人工裁决"
+    return conflicts
+
+
 # ---------- CACA LLM 抽取（叙述型，无原生等级） ----------
 
 # (小节编号, 治疗阶段, 人群提示)；人群提示非 None 时若 LLM 留空则回填
@@ -282,10 +314,10 @@ def main() -> None:
     print(f"CSCO 推荐决策：{len(csco)} 条")
     print(f"CACA 推荐决策：{len(caca)} 条")
 
-    conflicts = diff(csco + caca)
-    print(f"冲突：{len(conflicts)} 条")
+    conflicts = resolve_conflicts(diff(csco + caca))
+    print(f"冲突：{len(conflicts)} 条（策略={config.CONFLICT_STRATEGY}）")
     for c in conflicts[:20]:
-        print(f"  [{c.key}] CSCO={c.csco_regimens}  vs  CACA={c.caca_regimens}")
+        print(f"  [{c.key}] CSCO={c.csco_regimens}  vs  CACA={c.caca_regimens} → {c.resolution}")
 
 
 if __name__ == "__main__":

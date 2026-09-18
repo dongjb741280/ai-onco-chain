@@ -22,12 +22,14 @@ class GuidelineProfile:
     name: str              # 指南标识，如 "CSCO" / "CACA"
     path: Path             # 该指南的 markdown
     citation_prefix: str   # 引用显示名，如 "CSCO" / "CACA"
+    region: str = "china"  # china | foreign（冲突裁决「中国指南优先」用）
+    year: int = 2026       # 版本年份（冲突裁决「最新优先」用）
 
 
 # 参与检索与报告的指南（顺序 = 报告引用的展示顺序）
 GUIDE_PROFILES: list[GuidelineProfile] = [
-    GuidelineProfile(name="CSCO", path=OUTPUT_DIR / "guide_csco.md", citation_prefix="CSCO"),
-    GuidelineProfile(name="CACA", path=OUTPUT_DIR / "guide_caca.md", citation_prefix="CACA"),
+    GuidelineProfile(name="CSCO", path=OUTPUT_DIR / "guide_csco.md", citation_prefix="CSCO", region="china", year=2026),
+    GuidelineProfile(name="CACA", path=OUTPUT_DIR / "guide_caca.md", citation_prefix="CACA", region="china", year=2026),
 ]
 
 # 病例编号 → 文件名（与 skill 第一步的映射表一致）
@@ -49,6 +51,9 @@ ANTHROPIC_BASE_URL = os.getenv("ANTHROPIC_BASE_URL")  # None = 默认 Anthropic 
 GUIDE_RETRIEVER = os.getenv("GUIDE_RETRIEVER", "auto")  # auto | vector | bm25
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 GUIDE_TOP_K = int(os.getenv("GUIDE_TOP_K", "6"))
+
+# 冲突裁决策略（见 .scratch/multi-guide/spec.md issue 04）：human | china-first | latest-first
+CONFLICT_STRATEGY = os.getenv("CONFLICT_STRATEGY", "human")
 
 # 图状态持久化（多轮记忆）：未设置 POSTGRES_URL 时退回内存 checkpointer
 POSTGRES_URL = os.getenv("POSTGRES_URL")  # 如 postgresql://user:pass@localhost:5432/db
