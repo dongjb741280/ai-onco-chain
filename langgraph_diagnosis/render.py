@@ -279,6 +279,17 @@ def render_decision_chain_mmd(result: dict) -> str:
     return "\n".join(L)
 
 
+def _render_guide_comparison(comparison: list) -> str:
+    """跨指南对比小节：逐决策点并列 CSCO/CACA 立场，冲突高亮。"""
+    lines = []
+    for e in comparison:
+        flag = "　⚠ 冲突" if e.conflict else ""
+        lines.append(f"- **{e.topic}**{flag}")
+        lines.append(f"  - CSCO：{e.csco}")
+        lines.append(f"  - CACA：{e.caca}")
+    return "\n".join(lines)
+
+
 def render_diagnosis(result: dict) -> str:
     f = result.get("features")
     name = result.get("patient_name") or result.get("case_id", "")
@@ -296,6 +307,9 @@ def render_diagnosis(result: dict) -> str:
     L.append("\n## TNM 分期\n" + report.tnm_staging)
     L.append("\n## 诊疗经过\n" + report.treatment_timeline)
     L.append("\n## 治疗评价（对照指南）\n" + report.treatment_evaluation)
+    comparison = result.get("guide_comparison") or []
+    if comparison:
+        L.append("\n## 跨指南对比（CSCO vs CACA）\n" + _render_guide_comparison(comparison))
     L.append("\n## 后续建议\n" + "\n".join(f"{i}. {r}" for i, r in enumerate(report.recommendations, 1)))
     L.append("\n## 卡点 / 待核实\n" + "\n".join(f"- {b}" for b in report.blockers))
     L.append("\n## 说明\n\n> " + report.disclaimer)

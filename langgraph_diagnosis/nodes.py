@@ -15,6 +15,7 @@ from extractor import extract_features, load_patient
 from schemas import (
     ChainPath,
     DiagnosisReport,
+    GuidelineComparisonList,
     MolecularSubtype,
     RedLineList,
     Staging,
@@ -246,6 +247,38 @@ R2 脑膜治疗 / S 继续系统治疗 / T 疗效评估+毒性+MDT / U 长期随
     summary_result = _ask(TraceSummary, summary_system, human)
 
     return {"chain_path": chain_result.steps, "trace_summary": summary_result}
+
+
+def compare_guides_node(state: dict[str, Any]) -> dict[str, Any]:
+    subtype = state.get("subtype")
+    staging = state.get("staging")
+    chain = state.get("chain_path", [])
+    sources = state.get("guide_sources", [])
+
+    chain_txt = "\n".join(f"[{s.node}] {s.branch or ''} → {s.evidence}" for s in chain)
+
+    by_guide: dict[str, list[str]] = {}
+    for s in sources:
+        by_guide.setdefault(s.get("guide", "?"), []).append(s["text"])
+
+    system = """你是跨指南对比助手。针对当前病例涉及的诊疗决策点，逐点并列 CSCO 与 CACA 两份指南的立场。
+
+要求：
+- 只对比【CSCO 片段】/【CACA 片段】里实际出现、且与当前病例（分型/分期/治疗阶段）相关的决策点（如「HER2+ 新辅助方案」「晚期解救一线方案」）
+- 每个决策点给 topic（一句话）、csco（CSCO 立场，未提及写「未提及」）、caca（CACA 立场，未提及写「未提及」）
+- conflict 只在两者明确不一致时置 true（如推荐方案或推荐等级相反）；一方未提及 ≠ 冲突
+- 不裁决谁对谁错，只并列呈现"""
+    human = f"""【已判结果】
+分型={subtype.subtype if subtype else '未判'}；M={staging.m_status if staging else '未判'}
+决策链：\n{chain_txt}
+
+【CSCO 片段】
+{_guide_block(by_guide.get("CSCO", []))}
+
+【CACA 片段】
+{_guide_block(by_guide.get("CACA", []))}"""
+    result = _ask(GuidelineComparisonList, system, human)
+    return {"guide_comparison": result.entries}
 
 
 def write_report_node(state: dict[str, Any]) -> dict[str, Any]:

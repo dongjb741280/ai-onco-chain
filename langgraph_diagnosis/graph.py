@@ -15,6 +15,7 @@ import config
 
 from nodes import (
     check_red_lines_node,
+    compare_guides_node,
     extract_features_node,
     human_approve_node,
     human_review_node,
@@ -67,6 +68,7 @@ def build_graph():
     g.add_node("check_red_lines", check_red_lines_node)
     g.add_node("human_review", human_review_node)
     g.add_node("trace_chain", trace_chain_node)
+    g.add_node("compare_guides", compare_guides_node)
     g.add_node("write_report", write_report_node)
     g.add_node("human_approve", human_approve_node)
 
@@ -84,7 +86,8 @@ def build_graph():
     )
     g.add_edge("human_review", "trace_chain")
 
-    g.add_edge("trace_chain", "write_report")
+    g.add_edge("trace_chain", "compare_guides")
+    g.add_edge("compare_guides", "write_report")
     g.add_edge("write_report", "human_approve")
     g.add_edge("human_approve", END)
 

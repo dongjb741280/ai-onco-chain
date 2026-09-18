@@ -70,6 +70,19 @@ class ChainPath(BaseModel):
     steps: list[DecisionChainStep] = Field(default_factory=list)
 
 
+class GuidelineComparisonEntry(BaseModel):
+    """跨指南对比一条：同一决策点下 CSCO vs CACA 立场。"""
+    topic: str = Field(..., description="决策点，如 'HER2+ 新辅助方案'")
+    csco: str = Field("未提及", description="CSCO 立场；该指南未覆盖时写「未提及」")
+    caca: str = Field("未提及", description="CACA 立场；该指南未覆盖时写「未提及」")
+    conflict: bool = Field(False, description="两者明确不一致（方案/推荐等级相反）；一方未提及不算冲突")
+
+
+class GuidelineComparisonList(BaseModel):
+    """一次返回全部跨指南对比条目。"""
+    entries: list[GuidelineComparisonEntry] = Field(default_factory=list)
+
+
 class DiagnosisReport(BaseModel):
     """9 节诊断报告（skill 第四步模板）。"""
     patient_info: str = Field(..., description="患者信息一行")
@@ -113,5 +126,6 @@ class DiagnosisState(TypedDict, total=False):
     red_lines: list[RedLineFlag]
     chain_path: list[DecisionChainStep]
     trace_summary: TraceSummary
+    guide_comparison: list[GuidelineComparisonEntry]
     report: DiagnosisReport
     human_decision: str | None

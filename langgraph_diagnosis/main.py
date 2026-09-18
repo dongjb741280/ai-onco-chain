@@ -64,6 +64,7 @@ def _dump(result: dict) -> str:
         "red_lines": [r.model_dump() for r in result.get("red_lines", [])],
         "chain_path": [s.model_dump() for s in result.get("chain_path", [])],
         "trace_summary": result.get("trace_summary").model_dump() if result.get("trace_summary") else None,
+        "guide_comparison": [e.model_dump() for e in result.get("guide_comparison", [])],
         "report": result.get("report").model_dump() if result.get("report") else None,
     }
     return json.dumps(out, ensure_ascii=False, indent=2)
