@@ -96,6 +96,35 @@ class DiagnosisReport(BaseModel):
     disclaimer: str = Field("依据病历与所选指南整理，属临床辅助，最终以主诊医师/MDT 决策为准。")
 
 
+# ---------- 结构化决策（推荐决策抽取，多指南） ----------
+
+class RecommendationDecision(BaseModel):
+    """一条推荐决策 = 一个(分层, 方案)，带指南来源与规范等级（hybrid-kb issue 03 的 7 字段 + 指南来源/规范等级）。"""
+    guide: str = Field(..., description="指南来源：CSCO / CACA")
+    stage: str | None = Field(None, description="治疗阶段：新辅助 / 辅助 / 晚期解救")
+    population: str | None = Field(None, description="人群：HER2+ / HR+ / HR− / HER2低表达 / 三阴 …")
+    stratum: str | None = Field(None, description="分层条件，自由文本（pCR / non-pCR …）")
+    regimen: str = Field(..., description="方案名，如 TCbHP / T-DM1")
+    grade: str | None = Field(None, description="原生推荐等级：Ⅰ/Ⅱ/Ⅲ（CSCO）")
+    evidence: str | None = Field(None, description="原生证据类别：1A/1B/2A/2B/3（CSCO）")
+    page: int | None = Field(None, description="来源页码")
+    strength: str | None = Field(None, description="规范推荐强度：强 / 条件 / 不足")
+    evidence_level: str | None = Field(None, description="规范证据等级：高 / 中 / 低")
+
+
+class GuidelineConflict(BaseModel):
+    """跨指南冲突一条：同一 (治疗阶段, 人群, 分层条件) 下两指南立场不一致。"""
+    key: str = Field(..., description="匹配键（治疗阶段/人群/分层条件）")
+    description: str = Field(..., description="冲突描述")
+    csco_regimens: list[str] = Field(default_factory=list)
+    caca_regimens: list[str] = Field(default_factory=list)
+
+
+class RecommendationDecisionList(BaseModel):
+    """一次返回多条推荐决策（CACA LLM 抽取用）。"""
+    records: list[RecommendationDecision] = Field(default_factory=list)
+
+
 # ---------- 确定性抽取（代码产出，非 LLM） ----------
 
 class PatientFeatures(BaseModel):
