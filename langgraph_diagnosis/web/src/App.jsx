@@ -94,9 +94,15 @@ export default function App() {
       return
     }
     const page = cite.getAttribute('data-page')
-    const sources = page
-      ? d.guideSources.filter((s) => parseInt(s.page, 10) === parseInt(page, 10))
-      : d.guideSources
+    const guide = cite.getAttribute('data-guide')
+    let sources
+    if (page) {
+      sources = d.guideSources.filter((s) => parseInt(s.page, 10) === parseInt(page, 10))
+    } else if (guide) {
+      sources = d.guideSources.filter((s) => s.guide === guide)
+    } else {
+      sources = d.guideSources
+    }
     setSourceModal({ type: 'guide', sources: sources.length ? sources : d.guideSources })
   }
 

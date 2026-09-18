@@ -9,6 +9,7 @@ export function inline(s) {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\[病历·([^\]]+)\]/g, (m, field) => `<span class="cite cite-record" data-record="${field}">${m}</span>`)
     .replace(/\[([^\]]*P\s*(\d+)[^\]]*)\]/g, (m, text, page) => `<span class="cite" data-page="${page}">${text}</span>`)
+    .replace(/\[((?:CSCO|CACA)\s*·\s*[^\]]+)\]/g, (m, text) => `<span class="cite" data-guide="${text.split('·')[0].trim()}">${m}</span>`)
 }
 
 // 指南原文的轻量 markdown 渲染（去 HTML 注释，支持标题/表格/段落）
