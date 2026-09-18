@@ -1,6 +1,6 @@
 # ai-onco-chain
 
-从 CSCO 乳腺癌诊疗指南与脱敏病例构建的诊疗辅助流水线：把一份病历（`REAL-XXX` JSON）加上指南，自动产出**综合诊断报告**、**A→U 决策链追踪**与高亮 **mermaid 图**，并对齐脱敏病例金标准做评测。当前范围聚焦 **HER2+ 乳腺癌**。
+从 **CSCO + CACA** 乳腺癌诊疗指南与脱敏病例构建的诊疗辅助流水线：把一份病历（`REAL-XXX` JSON）加上多份指南，自动产出**综合诊断报告**、**跨指南对比**、**A→U 决策链追踪**与高亮 **mermaid 图**，并对齐脱敏病例金标准做评测。当前范围聚焦 **HER2+ 乳腺癌**。
 
 > 临床辅助工具，不替代主诊医师 / MDT 决策。
 
@@ -8,16 +8,18 @@
 
 ```text
 .
-├── langgraph_diagnosis/   # 主流水线：LangGraph 图编排 + LlamaIndex 指南 RAG + 结构化输出 + 人机协同
+├── langgraph_diagnosis/   # 主流水线：LangGraph 图编排 + 多指南 RAG + 结构化输出 + 人机协同
+│   ├── structured_decisions.py  # 结构化决策层：CSCO 决策表解析 + CACA LLM 抽取 + 跨指南 diff/裁决
 │   ├── server.py          # FastAPI + SSE 后端（流式诊断 + 人工复核）
 │   └── web/               # React + Vite 前端
-├── Data_Cleaning/         # 数据侧：CSCO 指南 PDF → OCR → 归一化 → guide_csco.md；病例与金标准
-│   ├── process/       # PP-StructureV3 OCR + 指南归一化（产出 guide_csco.md）
+├── Data_Cleaning/         # 数据侧：CSCO/CACA 指南 PDF → OCR → 归一化 → guide_{csco,caca}.md；病例与金标准
+│   ├── process/       # PP-StructureV3/PaddleOCR + 指南归一化（产出 guide_csco.md / guide_caca.md）
 │   └── doc/系统输入/       # 脱敏病例 JSON（REAL-* / BC-*）+ 诊疗金标准（git 不入库）
 ├── skill_diagnosis/       # skill 产出的决策链图（.mmd / .svg / .png / .excalidraw）
 ├── .claude/skills/
 │   └── diagnosis-report/  # 同一诊疗场景的 prompt 版 skill（流水线的语义来源）
 ├── .scratch/hybrid-kb/    # issue 跟踪：混合型知识库（结构化决策层 + 图谱 + 融合检索）的 spec
+├── .scratch/multi-guide/  # issue 跟踪：多指南融合（可插拔指南层 / 跨指南对比 / 冲突裁决）的 spec
 ├── docs/agents/           # 领域文档 / issue 跟踪 / triage 标签约定
 └── CONTEXT.md             # 领域术语表（推荐决策 / 方案 / 药物 / 推荐等级 / 证据类别 …）
 ```
@@ -44,7 +46,7 @@ START → load_patient → extract_features → retrieve_guide
       → judge_subtype → judge_staging → check_red_lines
       → 〔条件边〕 命中红线 → human_review(interrupt) → trace_chain
                   无红线        → trace_chain
-      → write_report → human_approve(interrupt) → END
+      → compare_guides → write_report → human_approve(interrupt) → END
 ```
 
 - **确定性代码**：JSON 解析、字段抽取、TNM 线索（`extractor.py`），可单测。
@@ -113,7 +115,8 @@ cd langgraph_diagnosis && .venv/bin/python server.py
 | `config.py` | 路径、病例映射、模型/检索配置（环境变量覆盖） |
 | `schemas.py` | Pydantic：结构化输出模型 + 图状态 |
 | `extractor.py` | 确定性字段抽取（权威字段 + 叙事兜底） |
-| `guide_rag.py` | LlamaIndex 指南检索（向量 / BM25 降级） |
+| `guide_rag.py` | LlamaIndex 指南检索（多指南，向量 / BM25 降级） |
+| `structured_decisions.py` | 结构化决策层：CSCO 决策表解析 + CACA LLM 抽取 + 规范等级归一化 + 跨指南 diff/裁决 |
 | `nodes.py` | 图节点：确定性节点 + LLM 判断节点 + interrupt 节点 |
 | `graph.py` | StateGraph 组装 + 条件边 + HITL |
 | `render.py` | 结构化结果 → markdown 报告 + 高亮决策链 mermaid |
@@ -123,7 +126,7 @@ cd langgraph_diagnosis && .venv/bin/python server.py
 
 ## 数据侧：Data_Cleaning
 
-把 258 页的 `2026CSCO乳腺癌诊疗指南.pdf` 经 OCR + 归一化转成 `Data_Cleaning/process/output/guide_csco.md`（按章节组织的 markdown，含 Ⅰ/Ⅱ/Ⅲ 推荐等级与 1A/2B 等证据类别）。归一化规则见 `.scratch/hybrid-kb/issues/02-guide-normalization.md`。
+把 `2026CSCO乳腺癌诊疗指南.pdf`（258 页，决策表含 Ⅰ/Ⅱ/Ⅲ 推荐等级与 1A/2B 等证据类别）经 OCR + 归一化转成 `guide_csco.md`，把《中国抗癌协会乳腺癌诊治指南与规范（2026 年版）》转成 `guide_caca.md`（按章节叙述，无统一推荐等级）。归一化规则见 `.scratch/hybrid-kb/issues/02-guide-normalization.md`。两指南的推荐决策结构化抽取 + 跨指南 diff/裁决见 `structured_decisions.py`（CACA 结果缓存 `caca_decisions.json`）。
 
 病例与金标准位于 `Data_Cleaning/doc/系统输入/`（脱敏后仍不入库，见 `.gitignore`）：
 
@@ -136,10 +139,10 @@ cd langgraph_diagnosis && .venv/bin/python server.py
 
 ## 术语
 
-领域标准用词见 `CONTEXT.md`：推荐决策 / 方案 / 药物 / 推荐等级（Ⅰ/Ⅱ/Ⅲ）/ 证据类别（1A..3）/ 治疗阶段 / 人群 / 分层条件 / 金标准。命名与输出时请遵循该术语表，避免使用其明确规避的同义词。
+领域标准用词见 `CONTEXT.md`：推荐决策 / 方案 / 药物 / 推荐等级（Ⅰ/Ⅱ/Ⅲ）/ 证据类别（1A..3）/ 治疗阶段 / 人群 / 分层条件 / 指南来源 / 规范推荐强度 / 规范证据等级 / 金标准。命名与输出时请遵循该术语表，避免使用其明确规避的同义词。
 
 ## 已知边界
 
 - 红线收集目前为循环单例，生产建议改成 list 输出的 Pydantic 模型（`RedLineList` 已定义）。
 - `guide_rag` 检索器每次构建会重建索引，生产建议在 `build_graph` 时注入已构建的 retriever。
-- 范围仅 CSCO 指南 + HER2+ 乳腺癌；多指南 / 多癌种不在当前范围。
+- 多指南已接入 CSCO + CACA（可插拔 `GuidelineProfile`）；境外指南（NCCN/SITC）与多癌种不在当前范围。跨指南冲突检测目前为方案名精确匹配、CACA 人群标签不统一，确定性 diff 覆盖率有限（见 `.scratch/multi-guide/issues/03`）。
