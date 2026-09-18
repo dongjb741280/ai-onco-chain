@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -10,9 +11,24 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-GUIDE_PATH = REPO_ROOT / "Data_Cleaning" / "process" / "output" / "guide_csco.md"
+OUTPUT_DIR = REPO_ROOT / "Data_Cleaning" / "process" / "output"
 PATIENT_DIR = REPO_ROOT / "Data_Cleaning" / "doc" / "系统输入"
 GOLD_STANDARD_PATH = PATIENT_DIR / "7例真实病例-患者基本情况与诊疗金标准.md"
+
+
+@dataclass(frozen=True)
+class GuidelineProfile:
+    """一份指南的检索/引用配置（多指南可插拔层，见 .scratch/multi-guide/spec.md）。"""
+    name: str              # 指南标识，如 "CSCO" / "CACA"
+    path: Path             # 该指南的 markdown
+    citation_prefix: str   # 引用显示名，如 "CSCO" / "CACA"
+
+
+# 参与检索与报告的指南（顺序 = 报告引用的展示顺序）
+GUIDE_PROFILES: list[GuidelineProfile] = [
+    GuidelineProfile(name="CSCO", path=OUTPUT_DIR / "guide_csco.md", citation_prefix="CSCO"),
+    GuidelineProfile(name="CACA", path=OUTPUT_DIR / "guide_caca.md", citation_prefix="CACA"),
+]
 
 # 病例编号 → 文件名（与 skill 第一步的映射表一致）
 CASES: dict[str, str] = {

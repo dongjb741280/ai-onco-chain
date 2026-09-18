@@ -23,7 +23,7 @@ def main() -> None:
     # 3. 指南 RAG（无 OPENAI_API_KEY → BM25 降级）
     from guide_rag import GuideRetriever, build_query
     r = GuideRetriever()
-    print(f"[3] RAG  mode={r.mode}  chunks={len(r.nodes)}")
+    print(f"[3] RAG  mode={r.mode}  guides={[p.name for p in r.profiles]}")
     q = build_query(f)
     secs = r.retrieve(q)
     print(f"    query={q[:80]!r}")

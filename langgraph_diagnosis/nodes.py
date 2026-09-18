@@ -68,14 +68,14 @@ def _guide_block(sections: list[str]) -> str:
 
 
 def _guide_block_with_sources(sources: list[dict]) -> str:
-    """把检索到的指南片段连同来源（章节+页码）拼给报告节点，供引用。"""
+    """把检索到的指南片段连同来源（指南+章节+页码）拼给报告节点，供引用。"""
     if not sources:
         return "（指南未检索到）"
     parts = []
     for i, s in enumerate(sources, 1):
-        src = f"【来源{i}】"
+        src = f"【来源{i}】 {s.get('guide', '')}"
         if s.get("section"):
-            src += f" {s['section']}"
+            src += f" · {s['section']}"
         if s.get("page"):
             src += f" · P{s['page']}"
         parts.append(f"{src}\n{s['text']}")
@@ -210,7 +210,7 @@ def trace_chain_node(state: dict[str, Any]) -> dict[str, Any]:
 【病历证据】
 {_features_block(f)}"""
 
-    chain_system = """你是 CSCO 乳腺癌决策链（A→U）追踪助手。回溯该病例从初诊到当前的完整路径，
+    chain_system = """你是乳腺癌决策链（A→U）追踪助手。回溯该病例从初诊到当前的完整路径，
 只走实际命中的节点，每个节点给：节点标签 + 走的分支（分支节点才有）+ 病历证据（一句原文/指标）。
 
 决策链节点：A 初诊乳腺癌 / B 影像+病理+分子标志物 / C TNM分期+分子分型 / D M分期有无远处转移 /
@@ -258,7 +258,7 @@ def write_report_node(state: dict[str, Any]) -> dict[str, Any]:
 
 要求：
 - 推荐等级写 Ⅰ/Ⅱ/Ⅲ 级，证据类别写 1A/1B/2A/2B/3；治疗评价用 ✓/△/⚠
-- 「病理与分子分型依据」「治疗评价」「后续建议」中，凡依据指南的知识点，都要标注知识库来源，格式如「[一、乳腺癌的诊断及检查 · P031]」，来源取自【指南片段】里的【来源N】标注（章节+页码）
+- 「病理与分子分型依据」「治疗评价」「后续建议」中，凡依据指南的知识点，都要标注知识库来源，格式如「[CSCO · 一、乳腺癌的诊断及检查 · P031]」「[CACA · 10.3 晚期乳腺癌解救性全身治疗]」，来源取自【指南片段】里的【来源N】标注（指南+章节+页码）
 - 「主要诊断」「病理与分子分型依据」「TNM 分期」中，凡来自病历的证据，标注原始病历来源，格式如「[病历·病理]」「[病历·影像]」，来源取自【病历证据】里的字段（诊断/病理/TNM/分期/治疗/影像/检验/叙事）
 - 不替未记录环节脑补"""
     human = f"""【已判结果】

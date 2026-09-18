@@ -1,4 +1,4 @@
-"""指南 RAG（LlamaIndex）：把 guide.md 按标题切块，按病例特征检索相关章节。
+"""指南 RAG（LlamaIndex）：多指南，每份指南独立建索引，检索结果带指南身份。
 
 默认 GUIDE_RETRIEVER=auto：
 - 装了 llama-index-embeddings-huggingface → 本地中文向量（BAAI/bge-m3）语义检索
@@ -38,13 +38,11 @@ def _extract_section(meta: dict, text: str) -> str | None:
 
 
 class GuideRetriever:
-    def __init__(self, guide_path: Path | None = None, top_k: int | None = None):
-        self.guide_path = guide_path or config.GUIDE_PATH
+    def __init__(self, profiles: list | None = None, top_k: int | None = None):
+        self.profiles = profiles or config.GUIDE_PROFILES
         self.top_k = top_k or config.GUIDE_TOP_K
-        self.nodes = _build_nodes(self.guide_path)
         self._mode = self._resolve_mode()
-        self._index = None
-        self._retriever = None
+        self._retrievers: dict[str, object] = {}
         self._build()
 
     def _resolve_mode(self) -> str:
@@ -67,43 +65,48 @@ class GuideRetriever:
             return config.EMBEDDING_MODEL
 
     def _build(self) -> None:
+        for p in self.profiles:
+            nodes = _build_nodes(p.path)
+            self._retrievers[p.name] = self._build_retriever(nodes)
+
+    def _build_retriever(self, nodes: list):
         if self._mode == "vector":
             try:
                 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
                 Settings.embed_model = HuggingFaceEmbedding(model_name=self._resolve_model_path())
-                self._index = VectorStoreIndex(self.nodes)
-                self._retriever = self._index.as_retriever(similarity_top_k=self.top_k)
-                return
+                index = VectorStoreIndex(nodes)
+                return index.as_retriever(similarity_top_k=self.top_k)
             except Exception as e:  # 模型加载失败（网络受限）等 → 退回 BM25
                 print(f"[RAG] 向量模型加载失败，退回 BM25：{e}")
                 self._mode = "bm25"
-        self._retriever = BM25Retriever.from_defaults(nodes=self.nodes, similarity_top_k=self.top_k)
+        return BM25Retriever.from_defaults(nodes=nodes, similarity_top_k=self.top_k)
 
     @property
     def mode(self) -> str:
         return self._mode
 
     def retrieve(self, query: str) -> list[str]:
-        """返回 top-k 指南片段文本，供判断节点使用。"""
-        nodes = self._retriever.retrieve(query)
-        return [n.get_content() for n in nodes]
+        """返回各指南 top-k 片段文本，供判断节点使用。"""
+        return [r["text"] for r in self.retrieve_with_sources(query)]
 
     def retrieve_with_sources(self, query: str) -> list[dict]:
-        """返回 top-k 片段及其来源（章节 + 页码），供报告引用。"""
+        """返回各指南 top-k 片段及其来源（指南 + 章节 + 页码），供报告引用。"""
         out = []
-        for n in self._retriever.retrieve(query):
-            text = n.get_content()
-            out.append({
-                "text": text,
-                "section": _extract_section(n.metadata, text),
-                "page": _extract_page(text),
-            })
+        for name, retriever in self._retrievers.items():
+            for n in retriever.retrieve(query):
+                text = n.get_content()
+                out.append({
+                    "guide": name,
+                    "text": text,
+                    "section": _extract_section(n.metadata, text),
+                    "page": _extract_page(text),
+                })
         return out
 
 
 def build_query(features) -> str:
-    """按病例特征构造检索 query（分子分型 + 分期 + 转移部位 + 治疗阶段）。"""
-    parts = ["乳腺癌诊疗指南", "分子分型 HER2 ER PR Ki-67 判读"]
+    """按病例特征构造检索 query（指南无关：分子分型 + 分期 + 转移部位 + 治疗阶段）。"""
+    parts = ["乳腺癌 分子分型 HER2 ER PR Ki-67 判读"]
     d = ";".join(features.diagnoses or [])
     if d:
         parts.append(f"诊断：{d}")

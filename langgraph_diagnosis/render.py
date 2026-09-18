@@ -292,7 +292,7 @@ def render_diagnosis(result: dict) -> str:
     L.append("# 乳腺癌综合诊断报告\n")
     L.append(f"**患者**：{name}　｜　**性别**：{f.gender or '未记录'}　｜　**年龄**：{f.age or '未记录'} 岁\n")
     L.append("## 主要诊断\n" + "\n".join(f"{i}. {d}" for i, d in enumerate(report.main_diagnosis, 1)))
-    L.append("\n## 病理与分子分型依据（对照 CSCO 分子分型）\n" + report.molecular_table)
+    L.append("\n## 病理与分子分型依据（对照指南）\n" + report.molecular_table)
     L.append("\n## TNM 分期\n" + report.tnm_staging)
     L.append("\n## 诊疗经过\n" + report.treatment_timeline)
     L.append("\n## 治疗评价（对照指南）\n" + report.treatment_evaluation)

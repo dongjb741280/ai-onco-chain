@@ -80,7 +80,7 @@ class DiagnosisReport(BaseModel):
     treatment_evaluation: str = Field(..., description="治疗评价对照指南（markdown 表格，带证据等级与来源引用）")
     recommendations: list[str] = Field(..., description="后续建议，每条带指南依据与来源引用（章节+页码）")
     blockers: list[str] = Field(..., description="卡点/待核实")
-    disclaimer: str = Field("依据病历与 CSCO 指南整理，属临床辅助，最终以主诊医师/MDT 决策为准。")
+    disclaimer: str = Field("依据病历与所选指南整理，属临床辅助，最终以主诊医师/MDT 决策为准。")
 
 
 # ---------- 确定性抽取（代码产出，非 LLM） ----------
