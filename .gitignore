@@ -13,7 +13,7 @@ __pycache__/
 .venv/
 
 # Rendered page images (regenerable via pdftoppm)
-pages/
+pages_csco/
 pages_caca/
 
 # Compiled OCR binary (rebuild with `swiftc -O ocr.swift -o ocr`)

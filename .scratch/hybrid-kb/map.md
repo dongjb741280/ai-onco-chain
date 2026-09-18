@@ -1,19 +1,19 @@
 ## Destination
 
-一份 spec + 一个端到端可跑的最小原型：把清洗后的 CSCO `guide.md`（HER2+ 乳腺癌）建成「混合型」医疗诊疗知识库 —— 结构化决策层（分层 → 方案 → 推荐等级 → 证据类别）+ 轻量知识图谱 + BM25/向量分路合并检索，作为 LLM agent 回答诊疗问题的 RAG 底料，并对齐 `系统输入` 病例 + 诊疗金标准做评测。
+一份 spec + 一个端到端可跑的最小原型：把清洗后的 CSCO `guide_csco.md`（HER2+ 乳腺癌）建成「混合型」医疗诊疗知识库 —— 结构化决策层（分层 → 方案 → 推荐等级 → 证据类别）+ 轻量知识图谱 + BM25/向量分路合并检索，作为 LLM agent 回答诊疗问题的 RAG 底料，并对齐 `系统输入` 病例 + 诊疗金标准做评测。
 
 ## Notes
 
-- 数据源：`Data_Cleaning/process_ocr/output/guide.md`（PP-StructureV3 OCR 全量 258 页产物）；评测对照 `Data_Cleaning/doc/系统输入/`（BC-*/REAL-* 病例 + 金标准）。
+- 数据源：`Data_Cleaning/process/output/guide_csco.md`（PP-StructureV3 OCR 全量 258 页产物）；评测对照 `Data_Cleaning/doc/系统输入/`（BC-*/REAL-* 病例 + 金标准）。
 - 范围：仅 HER2+ 乳腺癌、仅 CSCO 指南。多指南/多癌种 out of scope。
 - 每 session consult：`grilling` + `domain-modeling`（结构化/KG schema 需术语定稿，术语落到 `CONTEXT.md`）。
 - 技术默认（已拍）：Python + 全内存轻量（Chroma 或 pgvector 向量 + NetworkX 图 + 本地 bge-m3 或 API embedding），原型不碰 Neo4j/重型服务。
 - 原型终点：给定「分期 + 分层」→ 返回「方案 + 推荐等级 + 证据类别 + 来源页码」，能对上金标准。
-- 数据前提：`guide.md` 存在 Ⅰ/Ⅱ/Ⅲ 与证据类别的 OCR 噪声，需先归一化（见 02）。
+- 数据前提：`guide_csco.md` 存在 Ⅰ/Ⅱ/Ⅲ 与证据类别的 OCR 噪声，需先归一化（见 02）。
 
 ## Decisions so far
 
-- [guide.md 推荐等级/证据类别噪声清单及归一化规则](issues/02-guide-normalization.md)：噪声=Ⅰ→`级推荐`/`1级`/`I级`、Ⅱ→`ⅡI`、Ⅲ→`川`；证据=`[2A`/`1B]3` 缺括号、`1类证据`丢A。判别口诀「`级推荐`＝等级、`类证据`/`[X]`＝证据」。
+- [guide_csco.md 推荐等级/证据类别噪声清单及归一化规则](issues/02-guide-normalization.md)：噪声=Ⅰ→`级推荐`/`1级`/`I级`、Ⅱ→`ⅡI`、Ⅲ→`川`；证据=`[2A`/`1B]3` 缺括号、`1类证据`丢A。判别口诀「`级推荐`＝等级、`类证据`/`[X]`＝证据」。
 - [系统输入 schema 与金标准结构摸底](issues/01-system-input-schema.md)：27 JSON 同构标准化 EMR，无机器可读等级字段；金标准是**自由文本**（BC=4 文书含 MDT 结论/阶段小结「考察点」；REAL=「统一六项评测金标准」散文），无 Ⅰ/Ⅱ/Ⅲ 等级码。
 - [结构化决策记录 schema 定稿](issues/03-structured-schema.md)：一条推荐决策 = 一个(分层, 方案)；7 字段 = 治疗阶段/人群/分层条件/方案/推荐等级(ⅠⅡⅢ)/证据类别(1A..3)/来源页码；更新要点排除、给药表归 04 图谱。
 - [知识图谱节点/边 schema 定稿](issues/04-graph-schema.md)：6 节点（推荐决策/方案/药物/分层/推荐等级/证据类别）5 边；每条记录 reify 成「推荐决策」hub 节点；分层单节点；`组成于` 多对多、剂量不进图。

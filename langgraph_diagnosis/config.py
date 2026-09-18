@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-GUIDE_PATH = REPO_ROOT / "Data_Cleaning" / "process_ocr" / "output" / "guide.md"
+GUIDE_PATH = REPO_ROOT / "Data_Cleaning" / "process" / "output" / "guide_csco.md"
 PATIENT_DIR = REPO_ROOT / "Data_Cleaning" / "doc" / "系统输入"
 GOLD_STANDARD_PATH = PATIENT_DIR / "7例真实病例-患者基本情况与诊疗金标准.md"
 

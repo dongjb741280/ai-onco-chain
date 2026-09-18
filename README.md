@@ -11,16 +11,27 @@
 ├── langgraph_diagnosis/   # 主流水线：LangGraph 图编排 + LlamaIndex 指南 RAG + 结构化输出 + 人机协同
 │   ├── server.py          # FastAPI + SSE 后端（流式诊断 + 人工复核）
 │   └── web/               # React + Vite 前端
-├── Data_Cleaning/         # 数据侧：CSCO 指南 PDF → OCR → 归一化 → guide.md；病例与金标准
-│   ├── process_ocr/       # PP-StructureV3 OCR + 指南归一化（产出 guide.md）
+├── Data_Cleaning/         # 数据侧：CSCO 指南 PDF → OCR → 归一化 → guide_csco.md；病例与金标准
+│   ├── process/       # PP-StructureV3 OCR + 指南归一化（产出 guide_csco.md）
 │   └── doc/系统输入/       # 脱敏病例 JSON（REAL-* / BC-*）+ 诊疗金标准（git 不入库）
-├── diagrams/              # 生成的决策链 mermaid 图（.mmd / .svg / .png）
+├── skill_diagnosis/       # skill 产出的决策链图（.mmd / .svg / .png / .excalidraw）
 ├── .claude/skills/
 │   └── diagnosis-report/  # 同一诊疗场景的 prompt 版 skill（流水线的语义来源）
 ├── .scratch/hybrid-kb/    # issue 跟踪：混合型知识库（结构化决策层 + 图谱 + 融合检索）的 spec
 ├── docs/agents/           # 领域文档 / issue 跟踪 / triage 标签约定
 └── CONTEXT.md             # 领域术语表（推荐决策 / 方案 / 药物 / 推荐等级 / 证据类别 …）
 ```
+
+## Skill：diagnosis-report（prompt 版）
+
+`.claude/skills/diagnosis-report/SKILL.md` 是同一诊疗场景的 prompt 版 skill，也是主流水线的语义来源。不依赖任何 Python 脚本：Claude 直接读病历 + CSCO 指南，一次抽取、两个输出——
+
+1. **综合诊断报告**：主要诊断 / 分子分型 / TNM 分期 / 诊疗经过 / 治疗评价 / 后续建议 / 待核实
+2. **决策链追踪 A→U**（回溯该病例走到了哪个节点、凭什么）+ 高亮 mermaid 图
+
+输入三选一：`REAL-XXX` 编号、病历 JSON 路径、粘贴自由文本。触发语如「出一份诊断 / 根据病历和指南出诊断 / 走决策链 / 生成决策链图」。
+
+产出的决策链图落在 `skill_diagnosis/`：`breast-cancer-treatment-decision-chain.*` 为总览，`decision-chain-REAL-001..007.*` 为各病例实例；`.mmd` 是 mermaid 源、`.svg`/`.png` 是渲染图、`.excalidraw` 是白板。
 
 ## 主流水线：langgraph_diagnosis
 
@@ -112,7 +123,7 @@ cd langgraph_diagnosis && .venv/bin/python server.py
 
 ## 数据侧：Data_Cleaning
 
-把 258 页的 `2026CSCO乳腺癌诊疗指南.pdf` 经 OCR + 归一化转成 `Data_Cleaning/process_ocr/output/guide.md`（按章节组织的 markdown，含 Ⅰ/Ⅱ/Ⅲ 推荐等级与 1A/2B 等证据类别）。归一化规则见 `.scratch/hybrid-kb/issues/02-guide-normalization.md`。
+把 258 页的 `2026CSCO乳腺癌诊疗指南.pdf` 经 OCR + 归一化转成 `Data_Cleaning/process/output/guide_csco.md`（按章节组织的 markdown，含 Ⅰ/Ⅱ/Ⅲ 推荐等级与 1A/2B 等证据类别）。归一化规则见 `.scratch/hybrid-kb/issues/02-guide-normalization.md`。
 
 病例与金标准位于 `Data_Cleaning/doc/系统输入/`（脱敏后仍不入库，见 `.gitignore`）：
 

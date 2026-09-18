@@ -3,7 +3,7 @@ Status: resolved
 
 ## Question
 
-盘点 `Data_Cleaning/process_ocr/output/guide.md` 中「推荐等级（Ⅰ/Ⅱ/Ⅲ）」与「证据类别（1A/1B/2A/2B/3）」的 OCR 噪声：Ⅰ 被丢成空、`ⅡI` / `I级` / `1级` / `级推荐` 混用等。
+盘点 `Data_Cleaning/process/output/guide_csco.md` 中「推荐等级（Ⅰ/Ⅱ/Ⅲ）」与「证据类别（1A/1B/2A/2B/3）」的 OCR 噪声：Ⅰ 被丢成空、`ⅡI` / `I级` / `1级` / `级推荐` 混用等。
 
 给出 (a) 噪声清单（含样例行号）与 (b) 归一化到规范值的映射规则（含「推荐等级」与「证据类别」的区分依据）。作为 [03 结构化决策记录 schema 定稿] 的输入。
 

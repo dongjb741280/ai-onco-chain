@@ -9,8 +9,8 @@ page front matter (title / authors / abstract) gets a dedicated pass.
 import re
 import fitz
 
-SRC = "中国抗癌协会乳腺癌诊治指南与规范（2026 年版）.pdf"
-OUT = "中国抗癌协会乳腺癌诊治指南与规范（2026 年版）.md"
+SRC = "Data_Cleaning/doc/caca/中国抗癌协会乳腺癌诊治指南与规范（2026 年版）.pdf"
+OUT = "Data_Cleaning/process/output/中国抗癌协会乳腺癌诊治指南与规范（2026 年版）.md"
 
 COL_SPLIT = 310.0   # x separating left / right column
 HEADER_Y = 58.0     # running header + page number live above this y

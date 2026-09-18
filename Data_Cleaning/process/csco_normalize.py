@@ -1,4 +1,4 @@
-"""guide.md 归一化：按 issue 02 的映射规则清理 OCR 噪声。
+"""guide_csco.md 归一化：按 issue 02 的映射规则清理 OCR 噪声。
 
 规则（见 .scratch/hybrid-kb/issues/02-guide-normalization.md）：
 - 推荐等级：1级推荐 / I级推荐 -> Ⅰ级推荐；ⅡI级推荐 -> Ⅱ级推荐；川级推荐 -> Ⅲ级推荐
@@ -8,7 +8,7 @@
 import re
 from pathlib import Path
 
-GUIDE = Path("Data_Cleaning/process_ocr/output/guide.md")
+GUIDE = Path("Data_Cleaning/process/output/guide_csco.md")
 
 # 顺序敏感：ⅡI级推荐 必须先于 I级推荐 替换（ⅡI 含 I级推荐 子串）
 LEVEL_FIXES = [

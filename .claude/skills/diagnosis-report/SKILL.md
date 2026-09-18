@@ -31,7 +31,7 @@ description: 根据一份乳腺癌病历（REAL-XXX 编号 / JSON 路径 / 粘�
 2. **JSON 文件路径** → 直接读，取 `data["patient_data"]`。
 3. **粘贴的自由文本**（住院志/病程/出院记录等）→ 直接当作病历摘要。
 
-- 指南固定路径：`Data_Cleaning/process_ocr/output/guide.md`（CSCO 乳腺癌诊疗指南）。
+- 指南固定路径：`Data_Cleaning/process/output/guide_csco.md`（CSCO 乳腺癌诊疗指南）。
 - 术语表：`CONTEXT.md`（方案 / 药物 / 推荐等级 / 证据类别 / 治疗阶段 / 人群 / 分层条件 / 金标准 的标准用词）。
 - 评测参照（可选）：`Data_Cleaning/doc/系统输入/7例真实病例-患者基本情况与诊疗金标准.md`。
 
@@ -39,7 +39,7 @@ description: 根据一份乳腺癌病历（REAL-XXX 编号 / JSON 路径 / 粘�
 
 ## 第二步：读指南相关章节
 
-guide.md 按章节号组织，按病例所处阶段选读对应章节（用 grep 定位章节标题，不要硬背行号）：
+guide_csco.md 按章节号组织，按病例所处阶段选读对应章节（用 grep 定位章节标题，不要硬背行号）：
 
 | 章节 | 内容 | 何时读 |
 |---|---|---|
