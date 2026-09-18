@@ -41,6 +41,8 @@ class GuideRetriever:
     def __init__(self, profiles: list | None = None, top_k: int | None = None):
         self.profiles = profiles or config.GUIDE_PROFILES
         self.top_k = top_k or config.GUIDE_TOP_K
+        # top_k 为总预算，按指南平分（避免多指南后报告节点上下文翻倍 → LLM 偶发空输出，见 issue 01/02）
+        self.per_guide_k = max(1, self.top_k // len(self.profiles))
         self._mode = self._resolve_mode()
         self._retrievers: dict[str, object] = {}
         self._build()
@@ -75,11 +77,11 @@ class GuideRetriever:
                 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
                 Settings.embed_model = HuggingFaceEmbedding(model_name=self._resolve_model_path())
                 index = VectorStoreIndex(nodes)
-                return index.as_retriever(similarity_top_k=self.top_k)
+                return index.as_retriever(similarity_top_k=self.per_guide_k)
             except Exception as e:  # 模型加载失败（网络受限）等 → 退回 BM25
                 print(f"[RAG] 向量模型加载失败，退回 BM25：{e}")
                 self._mode = "bm25"
-        return BM25Retriever.from_defaults(nodes=nodes, similarity_top_k=self.top_k)
+        return BM25Retriever.from_defaults(nodes=nodes, similarity_top_k=self.per_guide_k)
 
     @property
     def mode(self) -> str:

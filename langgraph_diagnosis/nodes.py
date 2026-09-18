@@ -9,6 +9,7 @@ from typing import Any
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
+from pydantic import ValidationError
 
 import config
 from extractor import extract_features, load_patient
@@ -42,10 +43,20 @@ def _llm() -> ChatAnthropic:
     return _LLM
 
 
-def _ask(model, system: str, human: str):
-    """以 LangChain 消息列表（system + human）调用结构化输出；多轮消息可在此基础上追加历史。"""
+def _ask(model, system: str, human: str, retries: int = 2):
+    """以 LangChain 消息列表（system + human）调用结构化输出；多轮消息可在此基础上追加历史。
+
+    大 schema（如 DiagnosisReport）偶发空输出（网关模型返回空 args）→ 追加提示重试。
+    """
     msgs = [SystemMessage(content=system), HumanMessage(content=human)]
-    return _llm().with_structured_output(model).invoke(msgs)
+    structured = _llm().with_structured_output(model)
+    for attempt in range(retries + 1):
+        try:
+            return structured.invoke(msgs)
+        except ValidationError:
+            if attempt == retries:
+                raise
+            msgs.append(HumanMessage(content="上一次输出缺失必填字段，请完整填写所有必填字段后重新输出。"))
 
 
 def _features_block(f) -> str:
