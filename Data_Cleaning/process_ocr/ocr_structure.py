@@ -118,7 +118,8 @@ def main():
     output = []
     total = len(pngs)
     for i, f in enumerate(pngs, 1):
-        page_no = f[3:6]
+        m = re.match(r"pg-(\d+)", f)
+        page_no = m.group(1) if m else f
         print(f"[{i}/{total}] processing {f} (page {page_no})", flush=True)
         output.append(f"<!-- ===== Page {page_no} ===== -->")
         output.append("")
@@ -129,7 +130,7 @@ def main():
 
     raw = "\n".join(output)
     body = re.sub(r"\n{3,}", "\n\n", raw).strip() + "\n"
-    title = "# 2026 CSCO 乳腺癌诊疗指南\n\n"
+    title = "# 中国抗癌协会乳腺癌诊治指南与规范（2026年版）\n\n"
     with open(outpath, "w", encoding="utf-8") as fh:
         fh.write(title + body)
     print(f"wrote {len(pngs)} pages -> {outpath}")
