@@ -59,18 +59,28 @@ def _ask(model, system: str, human: str, retries: int = 2):
             msgs.append(HumanMessage(content="上一次输出缺失必填字段，请完整填写所有必填字段后重新输出。"))
 
 
+_MAX_FIELD_CHARS = 6000  # 单条长文本字段上限（叙事/检验/影像），防 LLM 节点 prompt 过长导致空输出
+
+
+def _clip(text: str, max_chars: int = _MAX_FIELD_CHARS) -> str:
+    text = text or ""
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars] + f"\n…（截断，原文 {len(text)} 字）"
+
+
 def _features_block(f) -> str:
     return "\n".join(
         x for x in [
             f"性别：{f.gender or '未记录'}",
             f"年龄：{f.age or '未记录'}",
             f"诊断：{'、'.join(f.diagnoses) if f.diagnoses else '未记录'}",
-            f"病理：\n{f.pathology_text or '（未记录）'}",
+            f"病理：\n{_clip(f.pathology_text, 2000) or '（未记录）'}",
             f"TNM/分期线索：{f.tnm_text or '（未记录）'}",
-            f"治疗：\n{f.treatment_text or '（未记录）'}",
-            f"影像：\n{f.imaging_text or '（未记录）'}",
-            f"检验：\n{f.labs_text or '（未记录）'}",
-            f"叙事：\n{f.narrative_text or '（未记录）'}",
+            f"治疗：\n{_clip(f.treatment_text, 2000) or '（未记录）'}",
+            f"影像：\n{_clip(f.imaging_text, 3000) or '（未记录）'}",
+            f"检验：\n{_clip(f.labs_text, 3000) or '（未记录）'}",
+            f"叙事：\n{_clip(f.narrative_text, 6000) or '（未记录）'}",
         ]
     )
 
