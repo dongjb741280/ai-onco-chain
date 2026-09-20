@@ -23,6 +23,9 @@ from schemas import (
     TraceSummary,
 )
 
+_GUIDE_PRIORITY = " → ".join(config.guide_priority_names())  # 如 "CSCO → CACA"
+_PRIMARY_GUIDE = config.guide_priority_names()[0]             # 如 "CSCO"
+
 # ---------- 工具 ----------
 
 _LLM: ChatAnthropic | None = None
@@ -282,12 +285,12 @@ def compare_guides_node(state: dict[str, Any]) -> dict[str, Any]:
     for s in sources:
         by_guide.setdefault(s.get("guide", "?"), []).append(s["text"])
 
-    system = """你是跨指南对比助手。针对当前病例涉及的诊疗决策点，逐点并列 CSCO 与 CACA 两份指南的立场。
+    system = f"""你是跨指南对比助手。针对当前病例涉及的诊疗决策点，逐点并列 CSCO 与 CACA 两份指南的立场。
 
 要求：
 - 只对比【CSCO 片段】/【CACA 片段】里实际出现、且与当前病例（分型/分期/治疗阶段）相关的决策点（如「HER2+ 新辅助方案」「晚期解救一线方案」）
 - 每个决策点给 topic（一句话）、csco（CSCO 立场，未提及写「未提及」）、caca（CACA 立场，未提及写「未提及」）
-- 按 CSCO → CACA 顺序依次罗列；不评估、不裁决两者差异或冲突（conflict 一律 false）"""
+- 按 {_GUIDE_PRIORITY} 顺序依次罗列；不评估、不裁决两者差异或冲突（conflict 一律 false）"""
     human = f"""【已判结果】
 分型={subtype.subtype if subtype else '未判'}；M={staging.m_status if staging else '未判'}
 决策链：\n{chain_txt}
@@ -307,12 +310,12 @@ def write_report_node(state: dict[str, Any]) -> dict[str, Any]:
     staging = state.get("staging")
     chain = state.get("chain_path", [])
     chain_txt = "\n".join(f"[{s.node}] {s.branch or ''} → {s.evidence}" for s in chain)
-    system = """你是乳腺肿瘤科医生助手，产出一份 9 节综合诊断报告（结构化字段）。
+    system = f"""你是乳腺肿瘤科医生助手，产出一份 9 节综合诊断报告（结构化字段）。
 
 要求：
 - 推荐等级写 Ⅰ/Ⅱ/Ⅲ 级，证据类别写 1A/1B/2A/2B/3；治疗评价用 ✓/△/⚠
-- 「病理与分子分型依据」「治疗评价」「后续建议」中，凡依据指南的知识点，都要标注知识库来源，格式如「[CSCO · 一、乳腺癌的诊断及检查 · P031]」「[CACA · 10.3 晚期乳腺癌解救性全身治疗]」，来源取自【指南片段】里的【来源N】标注（指南+章节+页码）
-- 指南引用优先级：以 CSCO 为基础；CSCO 未覆盖的知识点才引用 CACA 及其他指南；多条指南都覆盖时，按 CSCO → CACA → 其他 顺序依次罗列来源
+- 「病理与分子分型依据」「治疗评价」「后续建议」中，凡依据指南的知识点，都要标注知识库来源，格式如「[指南名 · 章节 · P页码]」，来源取自【指南片段】里的【来源N】标注（指南+章节+页码）
+- 指南引用优先级：以 {_PRIMARY_GUIDE} 为基础；{_PRIMARY_GUIDE} 未覆盖的知识点才引用其他指南；多条指南都覆盖时，按 {_GUIDE_PRIORITY} 顺序依次罗列来源
 - 不评估、不裁决指南之间的差异或冲突，只按上述顺序罗列来源
 - 「主要诊断」「病理与分子分型依据」「TNM 分期」中，凡来自病历的证据，标注原始病历来源，格式如「[病历·病理]」「[病历·影像]」，来源取自【病历证据】里的字段（诊断/病理/TNM/分期/治疗/影像/检验/叙事）
 - 不替未记录环节脑补"""

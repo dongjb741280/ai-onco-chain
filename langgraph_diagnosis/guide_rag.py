@@ -41,8 +41,11 @@ class GuideRetriever:
     def __init__(self, profiles: list | None = None, top_k: int | None = None):
         self.profiles = profiles or config.GUIDE_PROFILES
         self.top_k = top_k or config.GUIDE_TOP_K
-        # top_k 为总预算，按指南平分（避免多指南后报告节点上下文翻倍 → LLM 偶发空输出，见 issue 01/02）
-        self.per_guide_k = max(1, self.top_k // len(self.profiles))
+        # 主指南拿满 top_k，其余补充指南拿一半（min 1）
+        self.per_guide_k = {
+            p.name: (self.top_k if p.primary else max(1, self.top_k // 2))
+            for p in self.profiles
+        }
         self._mode = self._resolve_mode()
         self._retrievers: dict[str, object] = {}
         self._build()
@@ -69,19 +72,19 @@ class GuideRetriever:
     def _build(self) -> None:
         for p in self.profiles:
             nodes = _build_nodes(p.path)
-            self._retrievers[p.name] = self._build_retriever(nodes)
+            self._retrievers[p.name] = self._build_retriever(nodes, self.per_guide_k[p.name])
 
-    def _build_retriever(self, nodes: list):
+    def _build_retriever(self, nodes: list, k: int):
         if self._mode == "vector":
             try:
                 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
                 Settings.embed_model = HuggingFaceEmbedding(model_name=self._resolve_model_path())
                 index = VectorStoreIndex(nodes)
-                return index.as_retriever(similarity_top_k=self.per_guide_k)
+                return index.as_retriever(similarity_top_k=k)
             except Exception as e:  # 模型加载失败（网络受限）等 → 退回 BM25
                 print(f"[RAG] 向量模型加载失败，退回 BM25：{e}")
                 self._mode = "bm25"
-        return BM25Retriever.from_defaults(nodes=nodes, similarity_top_k=self.per_guide_k)
+        return BM25Retriever.from_defaults(nodes=nodes, similarity_top_k=k)
 
     @property
     def mode(self) -> str:
@@ -107,21 +110,19 @@ class GuideRetriever:
 
 
 def build_query(features) -> str:
-    """按病例特征构造检索 query（指南无关：分子分型 + 分期 + 转移部位 + 治疗阶段）。"""
-    parts = ["乳腺癌 分子分型 HER2 ER PR Ki-67 判读"]
+    """按病例特征构造检索 query（指南无关）：治疗阶段优先，转移部位次之，分型/诊断兜底。"""
+    tnm = features.tnm_text or ""
+    is_m1 = "M1" in tnm or "Ⅳ期" in tnm or "IV期" in tnm
+    parts = ["乳腺癌 晚期解救治疗"] if is_m1 else ["乳腺癌 新辅助治疗 辅助治疗"]
+    blob = (tnm + features.imaging_text + features.narrative_text).lower()
+    if any(k in blob for k in ("脑转移", "脑继发", "小脑", "脑膜")):
+        parts.append("脑转移")
+    if any(k in blob for k in ("骨转移", "骨继发", "肋骨", "椎体")):
+        parts.append("骨转移")
+    parts.append("分子分型 HER2 ER PR Ki-67 判读")
     d = ";".join(features.diagnoses or [])
     if d:
         parts.append(f"诊断：{d}")
     if features.pathology_text:
         parts.append(f"病理：{features.pathology_text[:200]}")
-    # 转移部位决定要检索骨转移/脑转移章节
-    blob = (features.tnm_text + features.imaging_text + features.narrative_text).lower()
-    if any(k in blob for k in ("脑转移", "脑继发", "小脑", "脑膜")):
-        parts.append("脑转移")
-    if any(k in blob for k in ("骨转移", "骨继发", "肋骨", "椎体")):
-        parts.append("骨转移")
-    if "M1" in features.tnm_text or "Ⅳ期" in features.tnm_text or "IV期" in features.tnm_text:
-        parts.append("晚期解救治疗")
-    else:
-        parts.append("新辅助治疗 辅助治疗")
     return " ".join(parts)

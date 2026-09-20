@@ -24,13 +24,19 @@ class GuidelineProfile:
     citation_prefix: str   # 引用显示名，如 "CSCO" / "CACA"
     region: str = "china"  # china | foreign（冲突裁决「中国指南优先」用）
     year: int = 2026       # 版本年份（冲突裁决「最新优先」用）
+    primary: bool = False  # 主指南：优先检索、优先引用
 
 
 # 参与检索与报告的指南（顺序 = 报告引用的展示顺序）
 GUIDE_PROFILES: list[GuidelineProfile] = [
-    GuidelineProfile(name="CSCO", path=OUTPUT_DIR / "guide_csco.md", citation_prefix="CSCO", region="china", year=2026),
+    GuidelineProfile(name="CSCO", path=OUTPUT_DIR / "guide_csco.md", citation_prefix="CSCO", region="china", year=2026, primary=True),
     GuidelineProfile(name="CACA", path=OUTPUT_DIR / "guide_caca.md", citation_prefix="CACA", region="china", year=2026),
 ]
+
+
+def guide_priority_names() -> list[str]:
+    """引用/检索优先级：主指南在前，其余按配置顺序。"""
+    return [p.name for p in sorted(GUIDE_PROFILES, key=lambda p: not p.primary)]
 
 # 病例编号 → 文件名（与 skill 第一步的映射表一致）
 CASES: dict[str, str] = {
