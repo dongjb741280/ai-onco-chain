@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 
@@ -15,6 +16,12 @@ from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.schema import Document
 
 import config
+
+_CACHE_DIR = Path(__file__).resolve().parent / ".cache" / "guide_index"
+
+
+def _content_hash(path: Path) -> str:
+    return hashlib.md5(path.read_bytes()).hexdigest()[:12]
 
 
 def _build_nodes(guide_path: Path) -> list:
@@ -72,19 +79,32 @@ class GuideRetriever:
     def _build(self) -> None:
         for p in self.profiles:
             nodes = _build_nodes(p.path)
-            self._retrievers[p.name] = self._build_retriever(nodes, self.per_guide_k[p.name])
+            self._retrievers[p.name] = self._build_retriever(p, nodes, self.per_guide_k[p.name])
 
-    def _build_retriever(self, nodes: list, k: int):
+    def _build_retriever(self, profile, nodes: list, k: int):
         if self._mode == "vector":
             try:
                 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
                 Settings.embed_model = HuggingFaceEmbedding(model_name=self._resolve_model_path())
-                index = VectorStoreIndex(nodes)
+                index = self._load_or_build_index(profile, nodes)
                 return index.as_retriever(similarity_top_k=k)
             except Exception as e:  # 模型加载失败（网络受限）等 → 退回 BM25
                 print(f"[RAG] 向量模型加载失败，退回 BM25：{e}")
                 self._mode = "bm25"
         return BM25Retriever.from_defaults(nodes=nodes, similarity_top_k=k)
+
+    def _load_or_build_index(self, profile, nodes: list):
+        """按指南内容 hash 落盘/加载向量索引，避免每次运行重新 embedding（bge-m3 慢）。"""
+        from llama_index.core import StorageContext, load_index_from_storage
+        cache_dir = _CACHE_DIR / f"{profile.name}-{_content_hash(profile.path)}"
+        if cache_dir.exists():
+            try:
+                return load_index_from_storage(StorageContext.from_defaults(persist_dir=str(cache_dir)))
+            except Exception as e:
+                print(f"[RAG] 索引缓存加载失败，重建：{e}")
+        index = VectorStoreIndex(nodes)
+        index.storage_context.persist(persist_dir=str(cache_dir))
+        return index
 
     @property
     def mode(self) -> str:
