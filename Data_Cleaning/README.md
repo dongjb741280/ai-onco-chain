@@ -11,16 +11,23 @@ Data_Cleaning/
 │   │   └── 2026CSCO乳腺癌诊疗指南.pdf
 │   ├── caca/                     # CACA 指南 PDF（文本版，双栏）
 │   │   └── 中国抗癌协会乳腺癌诊治指南与规范（2026 年版）.pdf
-│   ├── HER2决策系统-病例评测表-V1-虚构与真实分开.xlsx
-│   └── 系统输入/                 # 病例 JSON（HER2 决策系统输入，非本流水线）
+│   ├── nccn/                     # NCCN 指南 PDF（英文，文本版）
+│   │   └── （2026.V6）NCCN临床实践指南：乳腺癌.pdf
+│   ├── sitc/                     # SITC 指南 PDF（英文，文本版）
+│   │   └── e002597.full.pdf
+│   └── 系统输入/                 # 病例 JSON + 评测表（HER2 决策系统输入，非本流水线）
 ├── process/                  # PDF → Markdown 处理程序
 │   ├── csco_ocr.py               # CSCO：PaddleOCR（PP-OCRv5）文字识别 + 启发式表格
 │   ├── csco_normalize.py         # CSCO：后处理（推荐等级 Ⅰ/Ⅱ/Ⅲ 归一化）
 │   ├── caca_ocr.py               # CACA：PP-StructureV3 版面 + 表格结构识别
 │   ├── caca_extract.py           # CACA：fitz 文本抽取（双栏版式）
+│   ├── nccn_extract.py           # NCCN：fitz 文本抽取（英文，只留 BINV-N 算法页）
+│   ├── sitc_extract.py           # SITC：fitz 文本抽取（英文，按章节分块）
 │   ├── output/                   # 产物 Markdown
 │   │   ├── guide_csco.md
-│   │   └── guide_caca.md
+│   │   ├── guide_caca.md
+│   │   ├── guide_nccn.md
+│   │   └── guide_sitc.md
 │   ├── pages_csco/               # CSCO 页面渲染（gitignore，pdftoppm 可再生）
 │   └── .venv/                    # paddleocr / paddlex / PyMuPDF 环境
 └── PDF转Markdown方案对比.md      # 三种 OCR 方案对比（历史参考，旧命名）
@@ -28,7 +35,7 @@ Data_Cleaning/
 
 ## 流水线
 
-命名约定：脚本按 `{指南}_{动作}.py` 组织，`csco` = 中国临床肿瘤学会，`caca` = 中国抗癌协会；新增指南按同规则扩展（如 `nccn_*`）。
+命名约定：脚本按 `{指南}_{动作}.py` 组织，`csco` = 中国临床肿瘤学会，`caca` = 中国抗癌协会；英文文本版指南（NCCN/SITC）走 fitz 文本抽取（`nccn_extract.py` / `sitc_extract.py`），无需 OCR。
 
 ### CSCO（扫描版 PDF，需 OCR）
 
@@ -68,6 +75,8 @@ cd process
 | --- | --- | --- |
 | `output/guide_csco.md` | `csco_ocr.py` + `csco_normalize.py` | CSCO 指南全文（OCR） |
 | `output/guide_caca.md` | `caca_ocr.py` | CACA 指南全文（PP-StructureV3） |
+| `output/guide_nccn.md` | `nccn_extract.py` | NCCN 指南（fitz 文本，只留 BINV-N 算法页） |
+| `output/guide_sitc.md` | `sitc_extract.py` | SITC 免疫治疗指南（fitz 文本，英文） |
 | `output/中国抗癌协会乳腺癌诊治指南与规范（2026 年版）.md` | `caca_extract.py` | CACA 指南全文（fitz 文本） |
 
 ## 环境

@@ -36,7 +36,7 @@ START → load_patient → extract_features → retrieve_guide
 cd langgraph_diagnosis
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # 填入 ANTHROPIC_API_KEY；OPENAI_API_KEY 可选
+cp .env.example .env   # 填入 ANTHROPIC_API_KEY；POSTGRES_URL 可选（多轮记忆持久化）
 ```
 
 运行一例（交互式，遇红线/终审会暂停等你输入）：
@@ -88,8 +88,8 @@ cd .. && .venv/bin/python server.py   # http://127.0.0.1:8000
 ## 关键设计取舍
 
 1. **确定性 vs LLM 的分工**：JSON 解析、字段抽取、TNM 线索是确定性代码（可单测）；分子分型、分期判断、红线触发、A→U 走链、报告是 LLM（`temperature=0` + 结构化输出）。
-2. **RAG 降级**：没配 embedding key 时，`GuideRetriever` 自动退回 `BM25Retriever`（关键词，无需 embedding），保证可立即跑通；配了 `OPENAI_API_KEY` 则用 `VectorStoreIndex` 语义检索。
-3. **成本控制**：不把 270KB 指南全塞进 prompt，只喂检索到的 top-k 章节；也不把 880KB JSON 全塞，只喂 `extract_features` 抽出的证据文本。
+2. **RAG 降级**：`GuideRetriever` 用本地多语言向量 `BAAI/bge-m3`（经 ModelScope/HF 下载，支持中英跨语言命中英文指南）；未装 embedding 依赖时自动退回 `BM25Retriever`（关键词，无需 embedding），保证可立即跑通。
+3. **成本控制**：不把各指南全文（数百 KB）全塞进 prompt，只喂检索到的 top-k 章节；也不把 880KB JSON 全塞，只喂 `extract_features` 抽出的证据文本。
 4. **评测入口**：`--json` 输出与 `Data_Cleaning/doc/系统输入/7例真实病例-患者基本情况与诊疗金标准.md` 可直接做字段级对照。
 5. **可溯源的引用**：检索指南时携带章节+页码；报告里的指南证据（治疗评价/后续建议/分子分型）与病历证据（主要诊断/分期）都标注来源，前端可点击回看原文。
 
@@ -110,5 +110,5 @@ cd .. && .venv/bin/python server.py   # http://127.0.0.1:8000
 
 ## 已知边界（相对 skill 尚未覆盖）
 
-- **红线多例输出**：`check_red_lines` 用「循环单例」方式收集，生产建议改成 list 输出的 Pydantic 模型（一次调用返回全部红线）。
-- **检索器缓存**：`guide_rag` 每次构建会重建索引，`nodes` 里用模块级单例兜底；生产建议在 `build_graph` 时注入构建好的 retriever。
+- **跨指南对比范围**：`compare_guides` 仅并列 CSCO vs CACA；NCCN/SITC 作为检索证据源进入报告引用，不参与结构化对比/冲突检测（见根 README「已知边界」）。
+- **多癌种**：当前聚焦 HER2+ 乳腺癌，决策链节点与红线清单均按乳腺癌定制。
