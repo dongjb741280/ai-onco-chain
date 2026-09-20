@@ -130,14 +130,20 @@ class GuideRetriever:
 
 
 def build_query(features) -> str:
-    """按病例特征构造检索 query（指南无关）：治疗阶段优先，转移部位次之，分型/诊断兜底。"""
+    """按病例特征构造检索 query（指南无关）：治疗阶段优先，转移部位次之，分型/诊断兜底。
+
+    末尾追加英文阶段/转移关键词，辅助跨语言检索命中英文指南（如 NCCN）。
+    """
     tnm = features.tnm_text or ""
     is_m1 = "M1" in tnm or "Ⅳ期" in tnm or "IV期" in tnm
-    parts = ["乳腺癌 晚期解救治疗"] if is_m1 else ["乳腺癌 新辅助治疗 辅助治疗"]
     blob = (tnm + features.imaging_text + features.narrative_text).lower()
-    if any(k in blob for k in ("脑转移", "脑继发", "小脑", "脑膜")):
+    brain = any(k in blob for k in ("脑转移", "脑继发", "小脑", "脑膜"))
+    bone = any(k in blob for k in ("骨转移", "骨继发", "肋骨", "椎体"))
+
+    parts = ["乳腺癌 晚期解救治疗"] if is_m1 else ["乳腺癌 新辅助治疗 辅助治疗"]
+    if brain:
         parts.append("脑转移")
-    if any(k in blob for k in ("骨转移", "骨继发", "肋骨", "椎体")):
+    if bone:
         parts.append("骨转移")
     parts.append("分子分型 HER2 ER PR Ki-67 判读")
     d = ";".join(features.diagnoses or [])
@@ -145,4 +151,10 @@ def build_query(features) -> str:
         parts.append(f"诊断：{d}")
     if features.pathology_text:
         parts.append(f"病理：{features.pathology_text[:200]}")
+
+    parts.append("metastatic breast cancer systemic therapy" if is_m1 else "early breast cancer adjuvant neoadjuvant therapy")
+    if brain:
+        parts.append("brain metastasis")
+    if bone:
+        parts.append("bone metastasis")
     return " ".join(parts)

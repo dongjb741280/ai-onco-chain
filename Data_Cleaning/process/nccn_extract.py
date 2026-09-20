@@ -43,6 +43,7 @@ def clean_lines(text):
 def main():
     doc = fitz.open(SRC)
     out = []
+    kept = 0
     for pno in range(doc.page_count):
         lines = clean_lines(doc[pno].get_text())
         if not lines:
@@ -52,14 +53,19 @@ def main():
             if _LABEL_RE.fullmatch(ln) and len(ln) <= 12:
                 label = ln
                 break
-        out.append(f"# {label or 'NCCN'}\n")
+        # 只保留编号算法页（BINV-1..N，真正的诊疗路径决策树）；
+        # 跳过字母原则页（BINV-A..Z，通用方案/原则清单）、MS-*（讨论/参考文献）与无标签页
+        if not label or not label.startswith("BINV-") or not label[5:].isdigit():
+            continue
+        kept += 1
+        out.append(f"# {label}\n")
         out.append(f"<!-- ===== Page {pno + 1:03d} ===== -->\n")
         out.append("\n".join(lines))
         out.append("")
     md = "\n".join(out)
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(md)
-    print(f"wrote {OUT}: {len(md)} chars, {doc.page_count} pages")
+    print(f"wrote {OUT}: {len(md)} chars, kept {kept}/{doc.page_count} pages")
 
 
 if __name__ == "__main__":
