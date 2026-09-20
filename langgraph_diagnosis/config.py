@@ -32,6 +32,7 @@ GUIDE_PROFILES: list[GuidelineProfile] = [
     GuidelineProfile(name="CSCO", path=OUTPUT_DIR / "guide_csco.md", citation_prefix="CSCO", region="china", year=2026, primary=True),
     GuidelineProfile(name="CACA", path=OUTPUT_DIR / "guide_caca.md", citation_prefix="CACA", region="china", year=2026),
     GuidelineProfile(name="NCCN", path=OUTPUT_DIR / "guide_nccn.md", citation_prefix="NCCN", region="foreign", year=2026),
+    GuidelineProfile(name="SITC", path=OUTPUT_DIR / "guide_sitc.md", citation_prefix="SITC", region="foreign", year=2021),
 ]
 
 
