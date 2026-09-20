@@ -1,10 +1,10 @@
 """LangGraph 图编排：把诊断流程组装成状态图，含条件边 + 人机协同 interrupt。
 
 流程：
-  START → load_patient → extract_features → retrieve_guide
-        → judge_subtype → judge_staging → check_red_lines
+  START → load_patient → extract_features → judge_subtype → judge_staging
+        → retrieve_guide（子类型/分期感知 query）→ check_red_lines
         → [条件边] 有红线 → human_review（interrupt）；无红线 → trace_chain
-        → trace_chain → write_report → human_approve（interrupt）→ END
+        → trace_chain → compare_guides → write_report → human_approve（interrupt）→ END
 """
 from __future__ import annotations
 
@@ -74,10 +74,10 @@ def build_graph():
 
     g.add_edge(START, "load_patient")
     g.add_edge("load_patient", "extract_features")
-    g.add_edge("extract_features", "retrieve_guide")
-    g.add_edge("retrieve_guide", "judge_subtype")
+    g.add_edge("extract_features", "judge_subtype")
     g.add_edge("judge_subtype", "judge_staging")
-    g.add_edge("judge_staging", "check_red_lines")
+    g.add_edge("judge_staging", "retrieve_guide")
+    g.add_edge("retrieve_guide", "check_red_lines")
 
     g.add_conditional_edges(
         "check_red_lines",

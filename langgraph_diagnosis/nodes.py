@@ -129,7 +129,7 @@ def retrieve_guide_node(state: dict[str, Any]) -> dict[str, Any]:
     global _RETRIEVER
     if _RETRIEVER is None:
         _RETRIEVER = GuideRetriever()
-    q = build_query(state["features"])
+    q = build_query(state["features"], subtype=state.get("subtype"), staging=state.get("staging"))
     results = _RETRIEVER.retrieve_with_sources(q)
     return {
         "guide_sections": [r["text"] for r in results],
